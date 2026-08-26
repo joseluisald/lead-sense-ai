@@ -1,0 +1,14 @@
+// src/routes/index.ts
+import { Elysia } from 'elysia';
+import { clientRoutes } from './client.routes';
+import { leadRoutes } from './lead.routes';
+import { settingRoutes } from './setting.routes';
+import { statRoutes } from './stat.routes';
+import { logRoutes } from './log.routes';
+
+export const apiRoutes = new Elysia({ prefix: '/api' })
+    .use(clientRoutes)
+    .use(leadRoutes)
+    .use(settingRoutes)
+    .use(statRoutes)
+    .use(logRoutes);

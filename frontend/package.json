@@ -1,0 +1,28 @@
+{
+  "name": "lead-sense-ai-front-end",
+  "type": "module",
+  "version": "0.0.1",
+  "engines": {
+    "node": ">=22.12.0"
+  },
+  "scripts": {
+    "dev": "astro dev",
+    "build": "astro build",
+    "preview": "astro preview",
+    "astro": "astro"
+  },
+  "dependencies": {
+    "@alpinejs/collapse": "^3.16.3",
+    "@astrojs/alpinejs": "^1.0.0",
+    "@elysiajs/eden": "^1.4.9",
+    "@phosphor-icons/web": "^2.1.2",
+    "@tailwindcss/vite": "^4.3.3",
+    "astro": "^7.2.7",
+    "astro-compress": "^2.4.3",
+    "tailwindcss": "^4.3.3"
+  },
+  "devDependencies": {
+    "@types/alpinejs": "^3.13.11",
+    "alpinejs": "^3.16.3"
+  }
+}
