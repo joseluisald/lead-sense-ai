@@ -1,119 +1,131 @@
 ---
 import { api } from '../lib/eden';
 
-let apiStatus = "Offline";
+let apiStatus = 'Offline';
 let totalLeads = 0;
 
 try {
-  // Chamada consumindo a rota de Stats mapeada no seu back-end Bun
-  const { data, error } = await api.api.stats.get();
+  const { data } = await api.api.stats.get();
   if (data) {
-    totalLeads = data.totalLeads || 0;
-    apiStatus = "Online";
+    totalLeads = Number(data.totalLeads || 0);
+    apiStatus = 'Online';
   }
 } catch (error) {
-  console.error("Falha ao conectar com o Backend Elysia:", error);
+  console.error('Falha ao conectar com o Backend Elysia:', error);
 }
+
+const currentPath = Astro.url.pathname;
+const dashboardActive = currentPath === '/' || currentPath === '/dashboard';
 ---
 
-<aside 
-    x-data="{ sidebarOpen: true, settingsOpen: false }" 
-    class="flex flex-col bg-slate-900 text-slate-300 transition-all duration-300 ease-in-out h-full border-r border-slate-800 shrink-0"
-    :class="sidebarOpen ? 'w-72' : 'w-20'"
+<aside
+  x-data="{ sidebarOpen: true, settingsOpen: false }"
+  class="relative flex h-full shrink-0 flex-col overflow-hidden border-r border-slate-800 bg-slate-900 text-slate-300 shadow-2xl transition-all duration-300 ease-in-out"
+  :class="sidebarOpen ? 'w-72' : 'w-20'"
 >
-    <!-- Logo Area -->
-    <div class="flex items-center justify-between h-20 px-6 bg-slate-950 border-b border-slate-800">
-        <div class="flex items-center gap-3 overflow-hidden">
-            <div class="flex-shrink-0 flex items-center justify-center w-10 h-10 rounded-lg bg-gradient-to-br from-green-400 to-green-600 text-slate-900 shadow-lg shadow-green-500/20">
-                <!-- Ícone Phospor de folha -->
-                <i class="ph-fill ph-leaf text-2xl"></i>
-            </div>
-            <span x-show="sidebarOpen" x-transition.opacity.duration.300ms class="text-xl font-bold text-white whitespace-nowrap tracking-tight">LeadSense <span class="text-green-400">AI</span></span>
-        </div>
+  <header class="flex h-20 shrink-0 items-center justify-between border-b border-slate-800 bg-slate-950 px-4">
+    <a href="/dashboard" class="flex min-w-0 items-center gap-3" aria-label="Ir para o dashboard">
+      <span class="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-gradient-to-br from-green-400 to-green-600 text-slate-950 shadow-lg shadow-green-500/20 ring-1 ring-green-300/20">
+        <i class="ph-fill ph-leaf text-2xl"></i>
+      </span>
+      <span x-show="sidebarOpen" x-transition.opacity.duration.300ms class="truncate text-xl font-bold tracking-tight text-white">LeadSense <span class="text-green-400">AI</span></span>
+    </a>
+    <button
+      type="button"
+      @click="sidebarOpen = !sidebarOpen"
+      class="ml-2 flex h-9 w-9 shrink-0 items-center justify-center rounded-lg text-slate-500 transition-colors hover:bg-slate-800 hover:text-white"
+      :aria-label="sidebarOpen ? 'Recolher menu' : 'Expandir menu'"
+    >
+      <i class="ph text-lg transition-transform duration-300" :class="sidebarOpen ? 'ph-caret-line-left' : 'ph-caret-line-right'"></i>
+    </button>
+  </header>
+
+  <nav class="flex-1 overflow-y-auto overflow-x-hidden px-3 py-6" aria-label="Navegação principal">
+    <div x-show="sidebarOpen" class="mb-3 px-3 text-[11px] font-bold uppercase tracking-[0.18em] text-slate-500">Workspace</div>
+
+    <div class="space-y-1">
+      <a
+        href="/dashboard"
+        title="Dashboard"
+        class="group relative flex items-center gap-4 rounded-xl px-3 py-3 transition-all duration-200 hover:bg-slate-800 hover:text-white"
+        class:list={[{ 'bg-green-500/10 text-green-400 shadow-[inset_3px_0_0_0_#22c55e]': dashboardActive }]}
+      >
+        <i class="ph ph-chart-line-up shrink-0 text-2xl transition-transform duration-200 group-hover:scale-110"></i>
+        <span x-show="sidebarOpen" class="whitespace-nowrap font-medium">Dashboard</span>
+      </a>
+
+      <a
+        href="/leads"
+        title="Gestão de Leads"
+        class="group relative flex items-center gap-4 rounded-xl px-3 py-3 transition-all duration-200 hover:bg-slate-800 hover:text-white"
+        class:list={[{ 'bg-green-500/10 text-green-400 shadow-[inset_3px_0_0_0_#22c55e]': currentPath.includes('/leads') }]}
+      >
+        <i class="ph ph-users-three shrink-0 text-2xl transition-transform duration-200 group-hover:scale-110"></i>
+        <span x-show="sidebarOpen" class="whitespace-nowrap font-medium">Gestão de Leads</span>
+        {totalLeads > 0 && (
+          <span x-show="sidebarOpen" class="absolute right-3 rounded-full bg-green-500 px-2 py-0.5 text-xs font-bold text-slate-950">{totalLeads}</span>
+        )}
+      </a>
+
+      <a
+        href="/clients"
+        title="Meus Clientes"
+        class="group relative flex items-center gap-4 rounded-xl px-3 py-3 transition-all duration-200 hover:bg-slate-800 hover:text-white"
+        class:list={[{ 'bg-green-500/10 text-green-400 shadow-[inset_3px_0_0_0_#22c55e]': currentPath.includes('/clients') }]}
+      >
+        <i class="ph ph-briefcase shrink-0 text-2xl transition-transform duration-200 group-hover:scale-110"></i>
+        <span x-show="sidebarOpen" class="whitespace-nowrap font-medium">Meus Clientes</span>
+      </a>
     </div>
 
-    <!-- Navigation Links -->
-    <nav class="flex-1 px-4 py-6 space-y-2 overflow-y-auto overflow-x-hidden">
-        
-        <!-- Dashboard & Stats -->
-        <a href="/dashboard" 
-           class="flex items-center gap-4 px-3 py-3 rounded-xl transition-all duration-200 group hover:bg-slate-800 hover:text-white relative"
-           class:list={[{ 'bg-green-500/10 text-green-400': Astro.url.pathname === '/dashboard' }]}>
-            <i class="ph ph-chart-line-up text-2xl group-hover:scale-110 transition-transform"></i>
-            <span x-show="sidebarOpen" class="font-medium whitespace-nowrap">Dashboard</span>
-        </a>
+    <div x-show="sidebarOpen" class="mb-3 mt-8 px-3 text-[11px] font-bold uppercase tracking-[0.18em] text-slate-500">Sistema</div>
 
-        <!-- Leads -->
-        <a href="/leads" 
-           class="flex items-center gap-4 px-3 py-3 rounded-xl transition-all duration-200 group relative"
-           class:list={[{ 'bg-green-500/10 text-green-400': Astro.url.pathname.includes('/leads') }]}>
-            <i class="ph ph-users text-2xl group-hover:scale-110 transition-transform"></i>
-            <span x-show="sidebarOpen" class="font-medium whitespace-nowrap">Gestão de Leads</span>
-            
-            {totalLeads > 0 && (
-               <span x-show="sidebarOpen" class="absolute right-3 bg-green-500 text-slate-900 text-xs font-bold px-2 py-0.5 rounded-full">
-                  {totalLeads}
-               </span>
-            )}
-        </a>
-
-        <!-- Clients -->
-        <a href="/clients" 
-           class="flex items-center gap-4 px-3 py-3 rounded-xl transition-all duration-200 group hover:bg-slate-800 hover:text-white"
-           class:list={[{ 'bg-green-500/10 text-green-400': Astro.url.pathname.includes('/clients') }]}>
-            <i class="ph ph-briefcase text-2xl group-hover:scale-110 transition-transform"></i>
-            <span x-show="sidebarOpen" class="font-medium whitespace-nowrap">Meus Clientes</span>
-        </a>
-
-        <div x-show="sidebarOpen" class="pt-6 pb-2 px-3 text-xs font-semibold text-slate-500 uppercase tracking-wider">
-            Sistema
-        </div>
-
-        <!-- Settings com AlpineJS Sub-menu Dropdown -->
-        <div class="space-y-1">
-            <button @click="settingsOpen = !settingsOpen; if(!sidebarOpen) sidebarOpen = true;" 
-               class="w-full flex items-center justify-between gap-4 px-3 py-3 rounded-xl transition-all duration-200 group hover:bg-slate-800 hover:text-white">
-                <div class="flex items-center gap-4">
-                    <i class="ph ph-gear-six text-2xl group-hover:rotate-90 transition-transform duration-300"></i>
-                    <span x-show="sidebarOpen" class="font-medium whitespace-nowrap">Configurações</span>
-                </div>
-                <i x-show="sidebarOpen" class="ph ph-caret-down transition-transform duration-300" :class="settingsOpen ? 'rotate-180' : ''"></i>
-            </button>
-            
-            <div x-show="settingsOpen && sidebarOpen" x-collapse class="pl-12 pr-3 space-y-1">
-                <a href="/settings/email" class="block py-2 text-sm text-slate-400 hover:text-white transition-colors">Email SMTP</a>
-                <a href="/settings/whatsapp" class="block py-2 text-sm text-slate-400 hover:text-white transition-colors">WhatsApp</a>
-                <a href="/settings/rules" class="block py-2 text-sm text-slate-400 hover:text-white transition-colors">Regras de Validação</a>
-            </div>
-        </div>
-
-        <!-- Logs -->
-        <a href="/logs" 
-           class="flex items-center gap-4 px-3 py-3 rounded-xl transition-all duration-200 group hover:bg-slate-800 hover:text-white"
-           class:list={[{ 'bg-green-500/10 text-green-400': Astro.url.pathname.includes('/logs') }]}>
-            <i class="ph ph-terminal-window text-2xl group-hover:scale-110 transition-transform"></i>
-            <span x-show="sidebarOpen" class="font-medium whitespace-nowrap">API Logs</span>
-        </a>
-    </nav>
-
-    <!-- Footer Profile -->
-    <div class="p-4 border-t border-slate-800">
-        <!-- Toggle Menu Button -->
-        <button @click="sidebarOpen = !sidebarOpen" class="w-full flex items-center justify-center p-2 mb-4 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-400 hover:text-white transition-colors">
-            <i class="ph text-xl transition-transform duration-300" :class="sidebarOpen ? 'ph-caret-line-left' : 'ph-caret-line-right'"></i>
+    <div class="space-y-1">
+      <div>
+        <button
+          type="button"
+          @click="settingsOpen = !settingsOpen; if (!sidebarOpen) sidebarOpen = true"
+          class="group flex w-full items-center justify-between gap-4 rounded-xl px-3 py-3 text-left transition-all duration-200 hover:bg-slate-800 hover:text-white"
+          :class="settingsOpen ? 'bg-slate-800/70 text-white' : ''"
+          title="Configurações"
+        >
+          <span class="flex items-center gap-4">
+            <i class="ph ph-gear-six shrink-0 text-2xl transition-transform duration-300 group-hover:rotate-90"></i>
+            <span x-show="sidebarOpen" class="whitespace-nowrap font-medium">Configurações</span>
+          </span>
+          <i x-show="sidebarOpen" class="ph ph-caret-down text-sm transition-transform duration-300" :class="settingsOpen ? 'rotate-180' : ''"></i>
         </button>
-        
-        <!-- Profile Area -->
-        <div class="flex items-center gap-3 px-2 py-2 rounded-xl bg-slate-950/50 border border-slate-800/50 hover:bg-slate-800 transition-colors cursor-pointer" :class="!sidebarOpen ? 'justify-center' : ''">
-            <!-- Coloque sua imagem de perfil ou iniciais -->
-            <img src="https://ui-avatars.com/api/?name=Admin+LeadSense&background=10b981&color=fff" alt="Admin" class="w-10 h-10 rounded-full border-2 border-slate-700">
-            <div x-show="sidebarOpen" class="flex-1 min-w-0 overflow-hidden">
-                <p class="text-sm font-semibold text-white truncate">Administrador</p>
-                <p class="text-xs truncate flex items-center gap-1" class:list={[apiStatus === 'Online' ? 'text-green-400' : 'text-red-400']}>
-                    <span class="w-2 h-2 rounded-full animate-pulse" class:list={[apiStatus === 'Online' ? 'bg-green-500' : 'bg-red-500']}></span>
-                    API {apiStatus}
-                </p>
-            </div>
+
+        <div x-show="settingsOpen && sidebarOpen" x-collapse class="ml-6 mt-1 space-y-1 border-l border-slate-700 pl-5">
+          <a href="/settings/email" class="block rounded-lg px-3 py-2 text-sm text-slate-400 transition-colors hover:bg-slate-800 hover:text-white">Email SMTP</a>
+          <a href="/settings/whatsapp" class="block rounded-lg px-3 py-2 text-sm text-slate-400 transition-colors hover:bg-slate-800 hover:text-white">WhatsApp</a>
+          <a href="/settings/rules" class="block rounded-lg px-3 py-2 text-sm text-slate-400 transition-colors hover:bg-slate-800 hover:text-white">Regras de Validação</a>
         </div>
+      </div>
+
+      <a
+        href="/logs"
+        title="API Logs"
+        class="group relative flex items-center gap-4 rounded-xl px-3 py-3 transition-all duration-200 hover:bg-slate-800 hover:text-white"
+        class:list={[{ 'bg-green-500/10 text-green-400 shadow-[inset_3px_0_0_0_#22c55e]': currentPath.includes('/logs') }]}
+      >
+        <i class="ph ph-terminal-window shrink-0 text-2xl transition-transform duration-200 group-hover:scale-110"></i>
+        <span x-show="sidebarOpen" class="whitespace-nowrap font-medium">API Logs</span>
+      </a>
     </div>
+  </nav>
+
+  <footer class="shrink-0 border-t border-slate-800 p-3">
+    <div class="flex items-center gap-3 rounded-xl border border-slate-800 bg-slate-950/70 p-2.5 transition-colors hover:border-slate-700 hover:bg-slate-800" :class="!sidebarOpen ? 'justify-center' : ''">
+      <img src="https://ui-avatars.com/api/?name=Admin+LeadSense&background=10b981&color=fff" alt="Administrador" class="h-10 w-10 shrink-0 rounded-full border-2 border-slate-700" />
+      <div x-show="sidebarOpen" class="min-w-0 flex-1 overflow-hidden">
+        <p class="truncate text-sm font-semibold text-white">Administrador</p>
+        <p class="mt-0.5 flex items-center gap-1.5 truncate text-xs" class:list={[apiStatus === 'Online' ? 'text-green-400' : 'text-red-400']}>
+          <span class:list={["h-1.5 w-1.5 shrink-0 rounded-full", apiStatus === 'Online' ? 'bg-green-500' : 'bg-red-500']}></span>
+          API {apiStatus}
+        </p>
+      </div>
+      <i x-show="sidebarOpen" class="ph ph-dots-three-vertical text-lg text-slate-600"></i>
+    </div>
+  </footer>
 </aside>
