@@ -1,0 +1,107 @@
+---
+import { ArrowLeft, ArrowRight, Eye, EyeOff, Leaf, ShieldCheck } from 'lucide-astro';
+import '../styles/global.css';
+---
+
+<html lang="pt-BR">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width" />
+    <title>Criar conta | LeadSense AI</title>
+  </head>
+  <body class="min-h-screen bg-slate-950 font-sans text-slate-800">
+    <main class="flex min-h-screen">
+      <section class="relative hidden overflow-hidden bg-slate-900 lg:flex lg:w-1/2 lg:flex-col lg:justify-between lg:p-12 xl:p-16">
+        <div class="absolute -right-32 -top-32 h-96 w-96 rounded-full bg-cyan-500/10 blur-3xl"></div>
+        <div class="absolute -bottom-40 -left-24 h-96 w-96 rounded-full bg-teal-400/10 blur-3xl"></div>
+
+        <a href="/" class="relative z-10 flex items-center gap-3" aria-label="LeadSense AI - página inicial">
+          <span class="flex h-11 w-11 items-center justify-center rounded-xl bg-gradient-to-br from-cyan-400 to-blue-600 text-slate-950 shadow-lg shadow-cyan-500/20 ring-1 ring-cyan-300/20">
+            <Leaf class="text-2xl" aria-hidden="true" />
+          </span>
+          <span class="text-xl font-bold tracking-tight text-white">LeadSense <span class="text-cyan-400">AI</span></span>
+        </a>
+
+        <div class="relative z-10 max-w-lg">
+          <p class="mb-4 text-sm font-semibold uppercase tracking-[0.2em] text-cyan-400">Comece agora</p>
+          <h1 class="text-4xl font-bold leading-tight tracking-tight text-white xl:text-5xl">Mais clareza para cada oportunidade.</h1>
+          <p class="mt-6 max-w-md text-base leading-7 text-slate-400">Crie sua conta e tenha uma visão inteligente de toda a sua operação comercial.</p>
+          <div class="mt-10 flex items-center gap-3 text-sm font-medium text-slate-300">
+            <span class="flex h-9 w-9 items-center justify-center rounded-lg bg-cyan-500/10 text-cyan-400"><ShieldCheck class="text-lg" aria-hidden="true" /></span>
+            Seus dados protegidos em todos os momentos
+          </div>
+        </div>
+
+        <p class="relative z-10 text-sm text-slate-500">© 2025 LeadSense AI. Gestão inteligente de leads.</p>
+      </section>
+
+      <section class="flex w-full items-center justify-center bg-slate-50 px-5 py-10 sm:px-8 lg:w-1/2 lg:px-12 xl:px-20">
+        <div class="w-full max-w-md">
+          <a href="/" class="mb-8 flex items-center justify-center gap-3 lg:hidden" aria-label="LeadSense AI - página inicial">
+            <span class="flex h-11 w-11 items-center justify-center rounded-xl bg-gradient-to-br from-cyan-400 to-blue-600 text-slate-950 shadow-lg shadow-cyan-500/20 ring-1 ring-cyan-300/20">
+              <Leaf class="text-2xl" aria-hidden="true" />
+            </span>
+            <span class="text-xl font-bold tracking-tight text-slate-900">LeadSense <span class="text-blue-600">AI</span></span>
+          </a>
+
+          <a href="/login" class="mb-6 inline-flex items-center gap-2 text-sm font-semibold text-slate-500 transition-colors hover:text-slate-800">
+            <ArrowLeft class="text-base" aria-hidden="true" />
+            Voltar para o login
+          </a>
+
+          <div class="mb-6">
+            <p class="mb-2 text-sm font-semibold uppercase tracking-[0.18em] text-blue-600">Sua jornada começa aqui</p>
+            <h2 class="text-3xl font-bold tracking-tight text-slate-900">Crie sua conta</h2>
+            <p class="mt-2 text-slate-500">Preencha seus dados para começar a organizar seus leads.</p>
+          </div>
+
+          <form x-data="{ passwordVisible: false, confirmPasswordVisible: false }" @submit.prevent class="space-y-4">
+            <label class="block">
+              <span class="mb-2 block text-sm font-semibold text-slate-700">Nome completo</span>
+              <input type="text" name="name" placeholder="Seu nome" autocomplete="name" required class="settings-input h-12 bg-white" />
+            </label>
+
+            <label class="block">
+              <span class="mb-2 block text-sm font-semibold text-slate-700">E-mail corporativo</span>
+              <input type="email" name="email" placeholder="voce@empresa.com" autocomplete="email" required class="settings-input h-12 bg-white" />
+            </label>
+
+            <label class="block">
+              <span class="mb-2 block text-sm font-semibold text-slate-700">Senha</span>
+              <span class="relative block">
+                <input :type="passwordVisible ? 'text' : 'password'" name="password" placeholder="Crie uma senha segura" autocomplete="new-password" minlength="8" required class="settings-input h-12 bg-white pr-12" />
+                <button type="button" @click="passwordVisible = !passwordVisible" :aria-label="passwordVisible ? 'Ocultar senha' : 'Mostrar senha'" class="absolute right-3 top-1/2 flex -translate-y-1/2 items-center justify-center rounded-lg p-1.5 text-slate-400 transition-colors hover:text-slate-700 focus:outline-none focus:ring-2 focus:ring-cyan-400/50">
+                  <Eye x-show="!passwordVisible" x-cloak class="text-lg" aria-hidden="true" />
+                  <EyeOff x-show="passwordVisible" x-cloak class="text-lg" aria-hidden="true" />
+                </button>
+              </span>
+            </label>
+
+            <label class="block">
+              <span class="mb-2 block text-sm font-semibold text-slate-700">Confirmar senha</span>
+              <span class="relative block">
+                <input :type="confirmPasswordVisible ? 'text' : 'password'" name="password_confirmation" placeholder="Repita sua senha" autocomplete="new-password" minlength="8" required class="settings-input h-12 bg-white pr-12" />
+                <button type="button" @click="confirmPasswordVisible = !confirmPasswordVisible" :aria-label="confirmPasswordVisible ? 'Ocultar confirmação de senha' : 'Mostrar confirmação de senha'" class="absolute right-3 top-1/2 flex -translate-y-1/2 items-center justify-center rounded-lg p-1.5 text-slate-400 transition-colors hover:text-slate-700 focus:outline-none focus:ring-2 focus:ring-cyan-400/50">
+                  <Eye x-show="!confirmPasswordVisible" x-cloak class="text-lg" aria-hidden="true" />
+                  <EyeOff x-show="confirmPasswordVisible" x-cloak class="text-lg" aria-hidden="true" />
+                </button>
+              </span>
+            </label>
+
+            <label class="flex items-start gap-2 pt-1 text-sm leading-5 text-slate-500">
+              <input type="checkbox" name="terms" required class="mt-0.5 h-4 w-4 shrink-0 rounded border-slate-300 text-cyan-500 focus:ring-cyan-400" />
+              <span>Concordo com os <a href="/" class="font-semibold text-blue-600 transition-colors hover:text-blue-700">termos de uso</a> e a política de privacidade.</span>
+            </label>
+
+            <button type="submit" class="flex h-12 w-full items-center justify-center gap-2 rounded-xl bg-slate-900 px-5 text-sm font-semibold text-white shadow-sm transition-colors hover:bg-slate-800 focus:outline-none focus:ring-2 focus:ring-cyan-400/50">
+              Criar minha conta
+              <ArrowRight class="text-lg" aria-hidden="true" />
+            </button>
+          </form>
+
+          <p class="mt-6 text-center text-sm text-slate-500">Já possui uma conta? <a href="/login" class="font-semibold text-blue-600 transition-colors hover:text-blue-700">Entrar agora</a></p>
+        </div>
+      </section>
+    </main>
+  </body>
+</html>

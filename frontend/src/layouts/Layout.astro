@@ -8,22 +8,11 @@ import '../styles/global.css';
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width" />
     <title>LeadSense Admin</title>
-    <!-- Ícones super bonitos do Phosphor -->
-    <script src="https://unpkg.com/@phosphor-icons/web"></script>
-    <!-- Certifique-se de não remover o atributo x-cloak quando carregar o Alpine. -->
-    <style>
-      [x-cloak] { display: none !important; }
-    </style>
   </head>
   <body class="flex h-screen bg-slate-50 overflow-hidden text-slate-800 font-sans">
-    
-    <!-- Renderizando o Sidebar -->
     <Sidebar />
-
-    <!-- Área de Conteúdo -->
     <main class="flex-1 overflow-y-auto relative">
       <slot />
     </main>
-    
   </body>
 </html>

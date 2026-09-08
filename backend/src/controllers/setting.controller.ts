@@ -1,213 +1,91 @@
-// src/controllers/setting.controller.ts
-import { RowDataPacket, ResultSetHeader } from 'mysql2';
-import { db } from '../core/database'; // Importação real
-import { buildEmailHtml, sendEmailViaSmtp } from '../core/utils'; // Importação real
+import { SettingModel } from '../models/setting.model';
+import { buildEmailHtml, sendEmailViaSmtp } from '../core/utils';
 
 export class SettingController {
-
-    // ==========================
-    // EMAIL
-    // ==========================
-    static async getEmail(set: any) {
+    static async getEmail(set: { status?: number | string }) {
         try {
-            const [templateRows] = await db.execute<RowDataPacket[]>("SELECT value FROM settings WHERE \`key\` = 'email_template'");
-            const [smtpRows] = await db.execute<RowDataPacket[]>("SELECT value FROM settings WHERE \`key\` = 'smtp_settings'");
-
-            let template = null;
-            let smtp = null;
-
-            if (templateRows.length > 0 && templateRows[0].value) template = JSON.parse(templateRows[0].value);
-            if (smtpRows.length > 0 && smtpRows[0].value) smtp = JSON.parse(smtpRows[0].value);
-
-            return { template, smtp };
-        } catch (e: any) {
+            const [template, smtp] = await Promise.all([SettingModel.get('email_template'), SettingModel.get('smtp_settings')]);
+            return { template: template ? JSON.parse(template) : null, smtp: smtp ? JSON.parse(smtp) : null };
+        } catch (error: any) {
             set.status = 500;
-            return { error: e.message };
+            return { error: error.message };
         }
     }
 
-    static async saveEmail(body: any, set: any) {
+    static async saveEmail(body: { template?: unknown; smtp?: unknown }, set: { status?: number | string }) {
         try {
-            const { template, smtp } = body;
-
-            if (template) {
-                const [updateResult] = await db.execute<ResultSetHeader>(
-                    "UPDATE settings SET value = ? WHERE \`key\` = 'email_template'",
-                    [JSON.stringify(template)]
-                );
-
-                if (updateResult.affectedRows === 0) {
-                    await db.execute(
-                        "INSERT INTO settings (\`key\`, value) VALUES ('email_template', ?)",
-                        [JSON.stringify(template)]
-                    );
-                }
-            }
-
-            if (smtp) {
-                const [updateResult] = await db.execute<ResultSetHeader>(
-                    "UPDATE settings SET value = ? WHERE \`key\` = 'smtp_settings'",
-                    [JSON.stringify(smtp)]
-                );
-
-                if (updateResult.affectedRows === 0) {
-                    await db.execute(
-                        "INSERT INTO settings (\`key\`, value) VALUES ('smtp_settings', ?)",
-                        [JSON.stringify(smtp)]
-                    );
-                }
-            }
-
+            if (body.template) await SettingModel.set('email_template', body.template);
+            if (body.smtp) await SettingModel.set('smtp_settings', body.smtp);
             return { success: true };
-        } catch (e: any) {
+        } catch (error: any) {
             set.status = 500;
-            return { error: e.message };
+            return { error: error.message };
         }
     }
 
-    static async testEmail(body: any, set: any) {
+    static async testEmail(body: { email: string }, set: { status?: number | string }) {
         try {
-            const { email } = body;
-
-            const [tplRows] = await db.execute<RowDataPacket[]>("SELECT value FROM settings WHERE \`key\` = 'email_template'");
-            let emailSubject = 'Verifique seu interesse! (TESTE)';
-            let emailBody = `Olá Teste, confirme seu email clicando aqui.`;
-
-            if (tplRows.length > 0 && tplRows[0].value) {
+            const templateValue = await SettingModel.get('email_template');
+            let subject = 'Verifique seu interesse! (TESTE)';
+            let html = 'Olá Teste, confirme seu email clicando aqui.';
+            if (templateValue) {
                 try {
-                    const tpl = JSON.parse(tplRows[0].value);
-                    emailSubject = `[TESTE] ${tpl.subject || emailSubject}`;
-                    const btnColor = tpl.color || '#16a34a';
-                    const btnText = tpl.buttonText || 'Verificar Email';
-                    const bodyText = (tpl.body || '').replace('{name}', 'Usuário de Teste');
-
-                    emailBody = buildEmailHtml(emailSubject, bodyText, btnText, btnColor, '#');
-                } catch(e) {}
+                    const template = JSON.parse(templateValue);
+                    subject = `[TESTE] ${template.subject || subject}`;
+                    html = buildEmailHtml(subject, (template.body || '').replace('{name}', 'Usuário de Teste'), template.buttonText || 'Verificar Email', template.color || '#16a34a', '#');
+                } catch {}
             }
-
-            const success = await sendEmailViaSmtp(email, emailSubject, emailBody);
-            if (success) {
-                return { success: true };
-            } else {
-                set.status = 500;
-                return { error: 'Failed to send email. Check server logs for SMTP details.' };
-            }
-        } catch (e: any) {
+            if (await sendEmailViaSmtp(body.email, subject, html)) return { success: true };
             set.status = 500;
-            return { error: e.message };
+            return { error: 'Failed to send email. Check server logs for SMTP details.' };
+        } catch (error: any) {
+            set.status = 500;
+            return { error: error.message };
         }
     }
 
-    // ==========================
-    // WHATSAPP
-    // ==========================
-    static async getWhatsApp(set: any) {
+    static async getWhatsApp(set: { status?: number | string }) {
         try {
-            const [templateRows] = await db.execute<RowDataPacket[]>("SELECT value FROM settings WHERE \`key\` = 'whatsapp_template'");
-            const [providerRows] = await db.execute<RowDataPacket[]>("SELECT value FROM settings WHERE \`key\` = 'whatsapp_provider'");
-
-            let template = null;
-            let provider = null;
-
-            if (templateRows.length > 0 && templateRows[0].value) template = JSON.parse(templateRows[0].value);
-            if (providerRows.length > 0 && providerRows[0].value) provider = JSON.parse(providerRows[0].value);
-
-            return { template, provider };
-        } catch (e: any) {
+            const [template, provider] = await Promise.all([SettingModel.get('whatsapp_template'), SettingModel.get('whatsapp_provider')]);
+            return { template: template ? JSON.parse(template) : null, provider: provider ? JSON.parse(provider) : null };
+        } catch (error: any) {
             set.status = 500;
-            return { error: e.message };
+            return { error: error.message };
         }
     }
 
-    static async saveWhatsApp(body: any, set: any) {
+    static async saveWhatsApp(body: { template?: unknown; provider?: unknown }, set: { status?: number | string }) {
         try {
-            const { template, provider } = body;
-
-            if (template) {
-                const [updateResult] = await db.execute<ResultSetHeader>(
-                    "UPDATE settings SET value = ? WHERE \`key\` = 'whatsapp_template'",
-                    [JSON.stringify(template)]
-                );
-
-                if (updateResult.affectedRows === 0) {
-                    await db.execute(
-                        "INSERT INTO settings (\`key\`, value) VALUES ('whatsapp_template', ?)",
-                        [JSON.stringify(template)]
-                    );
-                }
-            }
-
-            if (provider) {
-                const [updateResult] = await db.execute<ResultSetHeader>(
-                    "UPDATE settings SET value = ? WHERE \`key\` = 'whatsapp_provider'",
-                    [JSON.stringify(provider)]
-                );
-
-                if (updateResult.affectedRows === 0) {
-                    await db.execute(
-                        "INSERT INTO settings (\`key\`, value) VALUES ('whatsapp_provider', ?)",
-                        [JSON.stringify(provider)]
-                    );
-                }
-            }
-
+            if (body.template) await SettingModel.set('whatsapp_template', body.template);
+            if (body.provider) await SettingModel.set('whatsapp_provider', body.provider);
             return { success: true };
-        } catch (e: any) {
+        } catch (error: any) {
             set.status = 500;
-            return { error: e.message };
+            return { error: error.message };
         }
     }
 
-    static async testWhatsApp(body: any, set: any) {
+    static async testWhatsApp(body: { number: string }, set: { status?: number | string }) {
+        console.log(`[WHATSAPP TESTE] Enviando mensagem de teste para: ${body.number}`);
+        return { success: true };
+    }
+
+    static async getRules(set: { status?: number | string }) {
         try {
-            const { number } = body;
-            console.log(`[WHATSAPP TESTE] Enviando mensagem de teste para: ${number}`);
+            return { rules: await SettingModel.getValidationRules() };
+        } catch (error: any) {
+            set.status = 500;
+            return { error: error.message };
+        }
+    }
+
+    static async saveRules(body: { rules: unknown }, set: { status?: number | string }) {
+        try {
+            await SettingModel.set('validation_rules', body.rules);
             return { success: true };
-        } catch (e: any) {
+        } catch (error: any) {
             set.status = 500;
-            return { error: e.message };
-        }
-    }
-
-    // ==========================
-    // REGRAS DE VALIDAÇÃO
-    // ==========================
-    static async getRules(set: any) {
-        try {
-            const [rulesRows] = await db.execute<RowDataPacket[]>("SELECT value FROM settings WHERE \`key\` = 'validation_rules'");
-            let rules = { autoRejectThreshold: 30, autoVerifyThreshold: 90, customScoringRules: '' };
-
-            if (rulesRows.length > 0 && rulesRows[0].value) {
-                rules = { ...rules, ...JSON.parse(rulesRows[0].value) };
-            }
-
-            return { rules };
-        } catch (e: any) {
-            set.status = 500;
-            return { error: e.message };
-        }
-    }
-
-    static async saveRules(body: any, set: any) {
-        try {
-            const { rules } = body;
-            if (rules) {
-                const [updateResult] = await db.execute<ResultSetHeader>(
-                    "UPDATE settings SET value = ? WHERE \`key\` = 'validation_rules'",
-                    [JSON.stringify(rules)]
-                );
-
-                if (updateResult.affectedRows === 0) {
-                    await db.execute(
-                        "INSERT INTO settings (\`key\`, value) VALUES ('validation_rules', ?)",
-                        [JSON.stringify(rules)]
-                    );
-                }
-            }
-            return { success: true };
-        } catch (e: any) {
-            set.status = 500;
-            return { error: e.message };
+            return { error: error.message };
         }
     }
 }

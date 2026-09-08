@@ -5,10 +5,12 @@ import { leadRoutes } from './lead.routes';
 import { settingRoutes } from './setting.routes';
 import { statRoutes } from './stat.routes';
 import { logRoutes } from './log.routes';
+import { authRoutes } from './auth.routes';
 
 export const apiRoutes = new Elysia({ prefix: '/api' })
     .use(clientRoutes)
     .use(leadRoutes)
     .use(settingRoutes)
     .use(statRoutes)
-    .use(logRoutes);
+    .use(logRoutes)
+    .use(authRoutes);

@@ -13,7 +13,7 @@ const app = new Elysia()
 
         set.headers['Access-Control-Allow-Origin'] = frontendOrigin;
         set.headers['Access-Control-Allow-Methods'] = 'GET,POST,PUT,DELETE,OPTIONS';
-        set.headers['Access-Control-Allow-Headers'] = 'Content-Type, x-api-key';
+        set.headers['Access-Control-Allow-Headers'] = 'Content-Type, Authorization, x-api-key';
         set.headers.Vary = 'Origin';
 
         if (request.method === 'OPTIONS') {
@@ -29,10 +29,13 @@ export type App = typeof app;
 async function startServer() {
     await initializeDatabase();
 
-    const server = app.listen(3000);
+    const server = app.listen({
+      hostname: "0.0.0.0",
+      port: 3000,
+    });
 
     console.log(`🚀 Servidor rodando em http://${server.server?.hostname}:${server.server?.port}`);
-    console.log(`📄 Swagger disponível em http://localhost:3000/docs`);
+    console.log(`📄 Swagger disponível em http://0.0.0.0:3000/docs`);
 }
 
 startServer().catch((error) => {

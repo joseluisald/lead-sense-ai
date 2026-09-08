@@ -1,4 +1,6 @@
 ---
+import { Image } from 'astro:assets';
+import { Briefcase, ChartLine, ChevronDown, EllipsisVertical, Leaf, LogOut, PanelLeftClose, PanelLeftOpen, Settings, Terminal, UsersRound } from 'lucide-astro';
 import { api } from '../lib/eden';
 
 let apiStatus = 'Offline';
@@ -16,54 +18,99 @@ try {
 
 const currentPath = Astro.url.pathname;
 const dashboardActive = currentPath === '/' || currentPath === '/dashboard';
+const settingsActive = currentPath.startsWith('/settings/');
+
+import logo from '@/assets/logos/logo-white.webp';
+import logoIcon from '@/assets/logos/logo-icon.webp';
 ---
 
 <aside
-  x-data="{ sidebarOpen: true, settingsOpen: false }"
-  class="relative flex h-full shrink-0 flex-col overflow-hidden border-r border-slate-800 bg-slate-900 text-slate-300 shadow-2xl transition-all duration-300 ease-in-out"
-  :class="sidebarOpen ? 'w-72' : 'w-20'"
+  x-data={`{ sidebarOpen: true, settingsOpen: ${settingsActive}, userMenuOpen: false }`}
+  x-init="sidebarOpen = false"
+  class="relative z-40 flex h-full w-72 shrink-0 flex-col border-r border-slate-800 bg-slate-900 text-slate-300 shadow-2xl transition-all duration-300 ease-in-out"
+  :class="{ '!w-20': !sidebarOpen }"
 >
-  <header class="flex h-20 shrink-0 items-center justify-between border-b border-slate-800 bg-slate-950 px-4">
-    <a href="/dashboard" class="flex min-w-0 items-center gap-3" aria-label="Ir para o dashboard">
-      <span class="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-gradient-to-br from-green-400 to-green-600 text-slate-950 shadow-lg shadow-green-500/20 ring-1 ring-green-300/20">
-        <i class="ph-fill ph-leaf text-2xl"></i>
-      </span>
-      <span x-show="sidebarOpen" x-transition.opacity.duration.300ms class="truncate text-xl font-bold tracking-tight text-white">LeadSense <span class="text-green-400">AI</span></span>
-    </a>
-    <button
-      type="button"
-      @click="sidebarOpen = !sidebarOpen"
-      class="ml-2 flex h-9 w-9 shrink-0 items-center justify-center rounded-lg text-slate-500 transition-colors hover:bg-slate-800 hover:text-white"
-      :aria-label="sidebarOpen ? 'Recolher menu' : 'Expandir menu'"
+  <header
+    class="flex h-20 shrink-0 items-center justify-center border-b border-slate-800 bg-slate-950 px-4"
+  >
+    <a
+        href="/dashboard"
+        class="relative flex h-14 min-w-0 items-center justify-center transition-all duration-300"
+        :class="!sidebarOpen ? 'w-14 absolute inset-0' : 'w-48'"
+        aria-label="Ir para o dashboard"
     >
-      <i class="ph text-lg transition-transform duration-300" :class="sidebarOpen ? 'ph-caret-line-left' : 'ph-caret-line-right'"></i>
-    </button>
+      <div
+          x-show="!sidebarOpen"
+          x-cloak
+          x-transition:enter="transition opacity ease-out duration-300 delay-100"
+          x-transition:enter-start="opacity-0"
+          x-transition:enter-end="opacity-100"
+          x-transition:leave="transition opacity ease-in duration-150"
+          x-transition:leave-start="opacity-100"
+          x-transition:leave-end="opacity-0"
+          class="absolute inset-0 flex items-center justify-center"
+      >
+        <Image
+            src={logoIcon}
+            alt="Ícone do Lead Sense AI"
+            fetchpriority="high"
+            loading="eager"
+            quality={85}
+            width={40}
+            height={40}
+            class="w-auto h-10 object-contain"
+        />
+      </div>
+
+      <div
+          x-show="sidebarOpen"
+          x-cloak
+          x-transition:enter="transition opacity ease-out duration-300 delay-100"
+          x-transition:enter-start="opacity-0"
+          x-transition:enter-end="opacity-100"
+          x-transition:leave="transition opacity ease-in duration-150"
+          x-transition:leave-start="opacity-100"
+          x-transition:leave-end="opacity-0"
+          class="absolute inset-0 flex items-center justify-start origin-left"
+      >
+        <Image
+            src={logo}
+            alt="Logo completo do Lead Sense AI"
+            fetchpriority="high"
+            loading="eager"
+            quality={85}
+            width={160}
+            height={27}
+            class="w-auto h-12 object-contain"
+        />
+      </div>
+    </a>
   </header>
 
-  <nav class="flex-1 overflow-y-auto overflow-x-hidden px-3 py-6" aria-label="Navegação principal">
-    <div x-show="sidebarOpen" class="mb-3 px-3 text-[11px] font-bold uppercase tracking-[0.18em] text-slate-500">Workspace</div>
+  <nav id="main-sidebar-navigation" class="flex-1 overflow-y-auto overflow-x-hidden px-3 py-6" aria-label="Navegação principal">
+    <div x-show="sidebarOpen" x-cloak class="mb-3 px-3 text-[11px] font-bold uppercase tracking-[0.18em] text-slate-500">Workspace</div>
 
     <div class="space-y-1">
       <a
         href="/dashboard"
         title="Dashboard"
         class="group relative flex items-center gap-4 rounded-xl px-3 py-3 transition-all duration-200 hover:bg-slate-800 hover:text-white"
-        class:list={[{ 'bg-green-500/10 text-green-400 shadow-[inset_3px_0_0_0_#22c55e]': dashboardActive }]}
+        class:list={[{ 'bg-cyan-500/10 text-cyan-400 shadow-[inset_3px_0_0_0_#1499b3]': dashboardActive }]}
       >
-        <i class="ph ph-chart-line-up shrink-0 text-2xl transition-transform duration-200 group-hover:scale-110"></i>
-        <span x-show="sidebarOpen" class="whitespace-nowrap font-medium">Dashboard</span>
+        <ChartLine class="shrink-0 text-2xl transition-transform duration-200 group-hover:scale-110" aria-hidden="true" />
+        <span x-show="sidebarOpen" x-cloak class="whitespace-nowrap font-medium">Dashboard</span>
       </a>
 
       <a
         href="/leads"
         title="Gestão de Leads"
         class="group relative flex items-center gap-4 rounded-xl px-3 py-3 transition-all duration-200 hover:bg-slate-800 hover:text-white"
-        class:list={[{ 'bg-green-500/10 text-green-400 shadow-[inset_3px_0_0_0_#22c55e]': currentPath.includes('/leads') }]}
+        class:list={[{ 'bg-cyan-500/10 text-cyan-400 shadow-[inset_3px_0_0_0_#1499b3]': currentPath.includes('/leads') }]}
       >
-        <i class="ph ph-users-three shrink-0 text-2xl transition-transform duration-200 group-hover:scale-110"></i>
-        <span x-show="sidebarOpen" class="whitespace-nowrap font-medium">Gestão de Leads</span>
+        <UsersRound class="shrink-0 text-2xl transition-transform duration-200 group-hover:scale-110" aria-hidden="true" />
+        <span x-show="sidebarOpen" x-cloak class="whitespace-nowrap font-medium">Gestão de Leads</span>
         {totalLeads > 0 && (
-          <span x-show="sidebarOpen" class="absolute right-3 rounded-full bg-green-500 px-2 py-0.5 text-xs font-bold text-slate-950">{totalLeads}</span>
+          <span x-show="sidebarOpen" x-cloak class="absolute right-3 rounded-full bg-cyan-500 px-2 py-0.5 text-xs font-bold text-slate-950">{totalLeads}</span>
         )}
       </a>
 
@@ -71,14 +118,14 @@ const dashboardActive = currentPath === '/' || currentPath === '/dashboard';
         href="/clients"
         title="Meus Clientes"
         class="group relative flex items-center gap-4 rounded-xl px-3 py-3 transition-all duration-200 hover:bg-slate-800 hover:text-white"
-        class:list={[{ 'bg-green-500/10 text-green-400 shadow-[inset_3px_0_0_0_#22c55e]': currentPath.includes('/clients') }]}
+        class:list={[{ 'bg-cyan-500/10 text-cyan-400 shadow-[inset_3px_0_0_0_#1499b3]': currentPath.includes('/clients') }]}
       >
-        <i class="ph ph-briefcase shrink-0 text-2xl transition-transform duration-200 group-hover:scale-110"></i>
-        <span x-show="sidebarOpen" class="whitespace-nowrap font-medium">Meus Clientes</span>
+        <Briefcase class="shrink-0 text-2xl transition-transform duration-200 group-hover:scale-110" aria-hidden="true" />
+        <span x-show="sidebarOpen" x-cloak class="whitespace-nowrap font-medium">Meus Clientes</span>
       </a>
     </div>
 
-    <div x-show="sidebarOpen" class="mb-3 mt-8 px-3 text-[11px] font-bold uppercase tracking-[0.18em] text-slate-500">Sistema</div>
+    <div x-show="sidebarOpen" x-cloak class="mb-3 mt-8 px-3 text-[11px] font-bold uppercase tracking-[0.18em] text-slate-500">Sistema</div>
 
     <div class="space-y-1">
       <div>
@@ -90,16 +137,16 @@ const dashboardActive = currentPath === '/' || currentPath === '/dashboard';
           title="Configurações"
         >
           <span class="flex items-center gap-4">
-            <i class="ph ph-gear-six shrink-0 text-2xl transition-transform duration-300 group-hover:rotate-90"></i>
-            <span x-show="sidebarOpen" class="whitespace-nowrap font-medium">Configurações</span>
+            <Settings class="shrink-0 text-2xl transition-transform duration-300 group-hover:rotate-90" aria-hidden="true" />
+            <span x-show="sidebarOpen" x-cloak class="whitespace-nowrap font-medium">Configurações</span>
           </span>
-          <i x-show="sidebarOpen" class="ph ph-caret-down text-sm transition-transform duration-300" :class="settingsOpen ? 'rotate-180' : ''"></i>
+          <ChevronDown x-show="sidebarOpen" x-cloak class="text-sm transition-transform duration-300" :class="settingsOpen ? 'rotate-180' : ''" aria-hidden="true" />
         </button>
 
-        <div x-show="settingsOpen && sidebarOpen" x-collapse class="ml-6 mt-1 space-y-1 border-l border-slate-700 pl-5">
-          <a href="/settings/email" class="block rounded-lg px-3 py-2 text-sm text-slate-400 transition-colors hover:bg-slate-800 hover:text-white">Email SMTP</a>
-          <a href="/settings/whatsapp" class="block rounded-lg px-3 py-2 text-sm text-slate-400 transition-colors hover:bg-slate-800 hover:text-white">WhatsApp</a>
-          <a href="/settings/rules" class="block rounded-lg px-3 py-2 text-sm text-slate-400 transition-colors hover:bg-slate-800 hover:text-white">Regras de Validação</a>
+        <div x-show="settingsOpen && sidebarOpen" x-cloak x-collapse class="ml-6 mt-1 space-y-1 border-l border-slate-700 pl-5">
+          <a href="/settings/email" class="block rounded-lg px-3 py-2 text-sm text-slate-400 transition-colors hover:bg-slate-800 hover:text-white" class:list={[{ 'bg-slate-800 text-white': currentPath === '/settings/email' }]}>Email SMTP</a>
+          <a href="/settings/whatsapp" class="block rounded-lg px-3 py-2 text-sm text-slate-400 transition-colors hover:bg-slate-800 hover:text-white" class:list={[{ 'bg-slate-800 text-white': currentPath === '/settings/whatsapp' }]}>WhatsApp</a>
+          <a href="/settings/rules" class="block rounded-lg px-3 py-2 text-sm text-slate-400 transition-colors hover:bg-slate-800 hover:text-white" class:list={[{ 'bg-slate-800 text-white': currentPath === '/settings/rules' }]}>Regras de Validação</a>
         </div>
       </div>
 
@@ -107,25 +154,69 @@ const dashboardActive = currentPath === '/' || currentPath === '/dashboard';
         href="/logs"
         title="API Logs"
         class="group relative flex items-center gap-4 rounded-xl px-3 py-3 transition-all duration-200 hover:bg-slate-800 hover:text-white"
-        class:list={[{ 'bg-green-500/10 text-green-400 shadow-[inset_3px_0_0_0_#22c55e]': currentPath.includes('/logs') }]}
+        class:list={[{ 'bg-cyan-500/10 text-cyan-400 shadow-[inset_3px_0_0_0_#1499b3]': currentPath.includes('/logs') }]}
       >
-        <i class="ph ph-terminal-window shrink-0 text-2xl transition-transform duration-200 group-hover:scale-110"></i>
-        <span x-show="sidebarOpen" class="whitespace-nowrap font-medium">API Logs</span>
+        <Terminal class="shrink-0 text-2xl transition-transform duration-200 group-hover:scale-110" aria-hidden="true" />
+        <span x-show="sidebarOpen" x-cloak class="whitespace-nowrap font-medium">API Logs</span>
       </a>
     </div>
   </nav>
 
-  <footer class="shrink-0 border-t border-slate-800 p-3">
-    <div class="flex items-center gap-3 rounded-xl border border-slate-800 bg-slate-950/70 p-2.5 transition-colors hover:border-slate-700 hover:bg-slate-800" :class="!sidebarOpen ? 'justify-center' : ''">
-      <img src="https://ui-avatars.com/api/?name=Admin+LeadSense&background=10b981&color=fff" alt="Administrador" class="h-10 w-10 shrink-0 rounded-full border-2 border-slate-700" />
-      <div x-show="sidebarOpen" class="min-w-0 flex-1 overflow-hidden">
+  <div class="shrink-0 border-t border-slate-800 px-3 py-2">
+    <button
+      type="button"
+      @click="sidebarOpen = !sidebarOpen; userMenuOpen = false"
+      class="flex w-full items-center gap-3 rounded-xl px-3 py-2.5 text-left text-slate-500 transition-all duration-200 hover:bg-slate-800 hover:text-white"
+      :class="!sidebarOpen ? 'justify-center px-0' : ''"
+      :aria-label="sidebarOpen ? 'Recolher menu' : 'Expandir menu'"
+      :aria-expanded="sidebarOpen"
+      aria-controls="main-sidebar-navigation"
+      :title="sidebarOpen ? 'Recolher menu' : 'Expandir menu'"
+    >
+      <PanelLeftClose x-show="sidebarOpen" x-cloak class="shrink-0 text-lg transition-transform duration-300" aria-hidden="true" />
+      <PanelLeftOpen x-show="!sidebarOpen" x-cloak class="shrink-0 text-lg transition-transform duration-300" aria-hidden="true" />
+      <span x-show="sidebarOpen" x-cloak class="text-sm font-medium">Recolher menu</span>
+    </button>
+  </div>
+
+  <footer class="relative shrink-0 p-3">
+    <div
+        x-show="userMenuOpen"
+        x-cloak
+        x-transition
+        @click.outside="userMenuOpen = false"
+        class="absolute bottom-full z-30 mb-2 w-52 overflow-hidden rounded-xl border border-slate-700 bg-slate-950 p-1.5 shadow-2xl"
+        :class="!sidebarOpen ? 'left-3' : 'right-3'"
+    >
+      <a href="/settings/email" @click="userMenuOpen = false" class="flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm text-slate-300 transition-colors hover:bg-slate-800 hover:text-white">
+        <Settings class="text-base text-slate-500" aria-hidden="true" />
+        Configurações
+      </a>
+      <button type="button" @click="localStorage.removeItem('auth_token'); localStorage.removeItem('user'); window.location.href = '/login'" class="flex w-full items-center gap-3 rounded-lg px-3 py-2.5 text-left text-sm text-red-300 transition-colors hover:bg-red-500/10 hover:text-red-200">
+        <LogOut class="text-base" aria-hidden="true" />
+        Sair da conta
+      </button>
+    </div>
+
+    <div class="flex items-center gap-3 rounded-xl border border-slate-800 bg-slate-950/70 p-2.5 transition-colors hover:border-slate-700 hover:bg-slate-800" :class="!sidebarOpen ? 'flex-col gap-2' : ''">
+      <img src="https://ui-avatars.com/api/?name=Admin+LeadSense&background=147cc0&color=fff" alt="Administrador" class="h-10 w-10 shrink-0 rounded-full border-2 border-slate-700" />
+      <div x-show="sidebarOpen" x-cloak class="min-w-0 flex-1 overflow-hidden">
         <p class="truncate text-sm font-semibold text-white">Administrador</p>
-        <p class="mt-0.5 flex items-center gap-1.5 truncate text-xs" class:list={[apiStatus === 'Online' ? 'text-green-400' : 'text-red-400']}>
-          <span class:list={["h-1.5 w-1.5 shrink-0 rounded-full", apiStatus === 'Online' ? 'bg-green-500' : 'bg-red-500']}></span>
+        <p class="mt-0.5 flex items-center gap-1.5 truncate text-xs" class:list={[apiStatus === 'Online' ? 'text-cyan-400' : 'text-red-400']}>
+          <span class:list={["h-1.5 w-1.5 shrink-0 rounded-full", apiStatus === 'Online' ? 'bg-cyan-500' : 'bg-red-500']}></span>
           API {apiStatus}
         </p>
       </div>
-      <i x-show="sidebarOpen" class="ph ph-dots-three-vertical text-lg text-slate-600"></i>
+      <button
+        type="button"
+        @click="userMenuOpen = !userMenuOpen"
+        class="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg text-slate-600 transition-colors hover:bg-slate-800 hover:text-white"
+        :aria-expanded="userMenuOpen"
+        aria-label="Abrir menu do usuário"
+        title="Menu do usuário"
+      >
+        <EllipsisVertical class="text-lg" aria-hidden="true" />
+      </button>
     </div>
   </footer>
 </aside>
