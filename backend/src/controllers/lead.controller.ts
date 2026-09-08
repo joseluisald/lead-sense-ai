@@ -1,9 +1,6 @@
-// src/controllers/lead.controller.ts
-import { randomUUID } from 'node:crypto';
-import { RowDataPacket, ResultSetHeader } from 'mysql2';
-import { db } from '../core/database';
-
-// Importando as funções utilitárias reais que acabamos de criar!
+import { LeadModel } from '../models/lead.model';
+import { ClientModel } from '../models/client.model';
+import { SettingModel } from '../models/setting.model';
 import {
     scoreLeadData,
     broadcastEvent,
@@ -14,290 +11,187 @@ import {
 } from '../core/utils';
 
 export class LeadController {
-
-    // 1. Criar Lead
-    static async create(body: any, apiKey: string | undefined, set: any) {
+    static async create(body: { name: string; email: string; whatsapp: string }, apiKey: string | undefined, set: { status?: number | string }) {
         if (!apiKey) {
-            const resp = { error: 'API Key missing in x-api-key header' };
-            // Fire-and-forget (não usamos await para não travar a resposta da API)
-            logApiRequest('/api/leads', 'POST', body, 401, resp);
+            const response = { error: 'API Key missing in x-api-key header' };
+            logApiRequest('/api/leads', 'POST', body, 401, response);
             set.status = 401;
-            return resp;
+            return response;
         }
 
-        let client;
         try {
-            const [clientRows] = await db.execute<RowDataPacket[]>('SELECT id FROM clients WHERE apiKey = ?', [apiKey]);
-            client = clientRows[0];
-        } catch (e) {
-            const resp = { error: 'Database error' };
-            logApiRequest('/api/leads', 'POST', body, 500, resp);
-            set.status = 500;
-            return resp;
-        }
-
-        if (!client) {
-            const resp = { error: 'Invalid API Key' };
-            logApiRequest('/api/leads', 'POST', body, 401, resp);
-            set.status = 401;
-            return resp;
-        }
-
-        const { name, email, whatsapp } = body;
-
-        // AI Scoring
-        let rules = { autoRejectThreshold: 30, autoVerifyThreshold: 90, customScoringRules: '' };
-        try {
-            const [rulesRows] = await db.execute<RowDataPacket[]>("SELECT value FROM settings WHERE key = 'validation_rules'");
-            if (rulesRows.length > 0 && rulesRows[0].value) {
-                rules = { ...rules, ...JSON.parse(rulesRows[0].value) };
+            const client = await ClientModel.findByApiKey(apiKey);
+            if (!client) {
+                const response = { error: 'Invalid API Key' };
+                logApiRequest('/api/leads', 'POST', body, 401, response);
+                set.status = 401;
+                return response;
             }
-        } catch (e) {}
 
-        // Executa a função utilitária real
-        const aiResult = await scoreLeadData(name, email, whatsapp, rules.customScoringRules);
-        const id = randomUUID();
-
-        let initialStatus = 'pending_verification';
-        if (aiResult.score < rules.autoRejectThreshold) {
-            initialStatus = 'rejected';
-        } else if (aiResult.score >= rules.autoVerifyThreshold) {
-            initialStatus = 'verified';
-        }
-
-        try {
-            await db.execute<ResultSetHeader>(
-                `INSERT INTO leads (id, clientId, name, email, whatsapp, score, probability, reason, status) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`,
-                [id, client.id, name, email, whatsapp, aiResult.score, aiResult.probability, aiResult.reason, initialStatus]
-            );
-
-            // Dispara o evento
-            broadcastEvent('new_lead', {
-                id, clientId: client.id, name, email, score: aiResult.score, status: initialStatus
+            const rules = await SettingModel.getValidationRules();
+            const aiResult = await scoreLeadData(body.name, body.email, body.whatsapp, rules.customScoringRules);
+            const status = aiResult.score < rules.autoRejectThreshold
+                ? 'rejected'
+                : aiResult.score >= rules.autoVerifyThreshold
+                    ? 'verified'
+                    : 'pending_verification';
+            const id = await LeadModel.create({
+                clientId: client.id,
+                ...body,
+                score: aiResult.score,
+                probability: aiResult.probability,
+                reason: aiResult.reason,
+                status
             });
 
+            broadcastEvent('new_lead', { id, clientId: client.id, name: body.name, email: body.email, score: aiResult.score, status });
             const appUrl = process.env.APP_URL || `http://localhost:${process.env.PORT || 3000}`;
             const verificationLink = `${appUrl}/api/verify/${id}`;
 
-            if (initialStatus === 'verified') {
+            if (status === 'verified') {
                 if (aiResult.probability === 'HIGH') {
-                    broadcastEvent('high_quality_lead', { id, name, email, score: aiResult.score });
+                    broadcastEvent('high_quality_lead', { id, name: body.name, email: body.email, score: aiResult.score });
                 }
-
-                // Dispara o webhook (executa em background)
-                fireWebhook({ id, name, email, whatsapp, clientId: client.id }, client, aiResult.score, aiResult.probability, 'verified');
-
-            } else if (initialStatus === 'pending_verification') {
-                // Disparo de Email
-                const [tplRows] = await db.execute<RowDataPacket[]>("SELECT value FROM settings WHERE key = 'email_template'");
+                fireWebhook({ id, clientId: client.id, ...body }, client, aiResult.score, aiResult.probability, 'verified');
+            } else if (status === 'pending_verification') {
+                const templateValue = await SettingModel.get('email_template');
                 let emailSubject = 'Verifique seu interesse!';
-                let emailBody = `Olá ${name}, confirme seu email clicando aqui: ${verificationLink}`;
+                let emailBody = `Olá ${body.name}, confirme seu email clicando aqui: ${verificationLink}`;
 
-                if (tplRows.length > 0 && tplRows[0].value) {
+                if (templateValue) {
                     try {
-                        const tpl = JSON.parse(tplRows[0].value);
-                        emailSubject = tpl.subject || emailSubject;
-                        const btnColor = tpl.color || '#16a34a';
-                        const btnText = tpl.buttonText || 'Verificar Email';
-                        const bodyText = (tpl.body || '').replace('{name}', name);
-
-                        // Constrói o HTML usando o utilitário
-                        emailBody = buildEmailHtml(emailSubject, bodyText, btnText, btnColor, verificationLink);
-                    } catch(e) {}
+                        const template = JSON.parse(templateValue);
+                        emailSubject = template.subject || emailSubject;
+                        emailBody = buildEmailHtml(
+                            emailSubject,
+                            (template.body || '').replace('{name}', body.name),
+                            template.buttonText || 'Verificar Email',
+                            template.color || '#16a34a',
+                            verificationLink
+                        );
+                    } catch {}
                 }
 
-                // Envia o e-mail (executa em background)
-                sendEmailViaSmtp(email, emailSubject, emailBody);
-
-                // Disparo de WhatsApp
-                if (whatsapp) {
-                    let waBody = `Olá ${name}, confirme seu interesse clicando no link: ${verificationLink}`;
-                    const [waTplRows] = await db.execute<RowDataPacket[]>("SELECT value FROM settings WHERE key = 'whatsapp_template'");
-
-                    if (waTplRows.length > 0 && waTplRows[0].value) {
+                sendEmailViaSmtp(body.email, emailSubject, emailBody);
+                if (body.whatsapp) {
+                    const whatsappTemplate = await SettingModel.get('whatsapp_template');
+                    let whatsappBody = `Olá ${body.name}, confirme seu interesse clicando no link: ${verificationLink}`;
+                    if (whatsappTemplate) {
                         try {
-                            const tpl = JSON.parse(waTplRows[0].value);
-                            if (tpl.body) {
-                                waBody = tpl.body.replace('{name}', name).replace('{link}', verificationLink);
-                            }
-                        } catch(e) {}
+                            const template = JSON.parse(whatsappTemplate);
+                            if (template.body) whatsappBody = template.body.replace('{name}', body.name).replace('{link}', verificationLink);
+                        } catch {}
                     }
-                    console.log(`[WHATSAPP DISPARO] Para: ${whatsapp} \n Mensagem: ${waBody}`);
+                    console.log(`[WHATSAPP DISPARO] Para: ${body.whatsapp} \n Mensagem: ${whatsappBody}`);
                 }
             }
 
-            const resp = {
+            const response = {
                 success: true,
                 message: 'Lead received and scored.',
                 leadId: id,
                 score: aiResult.score,
                 probability: aiResult.probability,
-                status: initialStatus,
-                verificationLink: initialStatus === 'pending_verification' ? verificationLink : undefined
+                status,
+                verificationLink: status === 'pending_verification' ? verificationLink : undefined
             };
-
-            logApiRequest('/api/leads', 'POST', body, 200, resp);
-            return resp;
-
-        } catch (e: any) {
-            const resp = { error: e.message };
-            logApiRequest('/api/leads', 'POST', body, 500, resp);
+            logApiRequest('/api/leads', 'POST', body, 200, response);
+            return response;
+        } catch (error: any) {
+            const response = { error: error.message };
+            logApiRequest('/api/leads', 'POST', body, 500, response);
             set.status = 500;
-            return resp;
+            return response;
         }
     }
 
-    // 2. Listar Leads
-    static async list(set: any) {
+    static async list(set: { status?: number | string }) {
         try {
-            const [leads] = await db.execute<RowDataPacket[]>(`
-                SELECT leads.*, clients.name as clientName
-                FROM leads
-                         JOIN clients ON leads.clientId = clients.id
-                ORDER BY leads.createdAt DESC
-            `);
-            return leads;
-        } catch (e: any) {
+            return await LeadModel.list();
+        } catch (error: any) {
             set.status = 500;
-            return { error: e.message };
+            return { error: error.message };
         }
     }
 
-    // 3. Verificar Lead (HTML Response)
-    static async verify(leadId: string, set: any) {
+    static async verify(leadId: string, set: { status?: number | string; headers: Record<string, string | number> }) {
         try {
-            const [leadRows] = await db.execute<RowDataPacket[]>('SELECT * FROM leads WHERE id = ?', [leadId]);
-
-            if (leadRows.length === 0) {
+            const lead = await LeadModel.findById(leadId);
+            if (!lead) {
                 set.status = 404;
                 return 'Lead not found';
             }
 
-            const lead = leadRows[0];
-
-            const [tplRows] = await db.execute<RowDataPacket[]>("SELECT value FROM settings WHERE key = 'email_template'");
+            const templateValue = await SettingModel.get('email_template');
             let brandColor = '#16a34a';
-            if (tplRows.length > 0 && tplRows[0].value) {
-                try { brandColor = JSON.parse(tplRows[0].value).color || brandColor; } catch(e) {}
+            if (templateValue) {
+                try {
+                    brandColor = JSON.parse(templateValue).color || brandColor;
+                } catch {}
             }
-
             set.headers['Content-Type'] = 'text/html; charset=utf8';
 
             if (lead.status === 'verified') {
-                return `
-                  <html>
-                    <body style="font-family: sans-serif; display:flex; justify-content:center; align-items:center; height:100vh; background:#f0f9ff; margin:0;">
-                      <div style="background:white; padding: 3rem; border-radius: 12px; box-shadow: 0 10px 15px -3px rgba(0,0,0,0.1); text-align:center;">
-                        <h1 style="color: ${brandColor}; margin-top:0;">E-mail Já Verificado!</h1>
-                        <p style="color:#4b5563; font-size:1.1rem;">Este e-mail já foi confirmado anteriormente.</p>
-                      </div>
-                    </body>
-                  </html>
-                `;
+                return `<html><body style="font-family:sans-serif;display:flex;justify-content:center;align-items:center;height:100vh;background:#f0f9ff;margin:0;"><div style="background:white;padding:3rem;border-radius:12px;box-shadow:0 10px 15px -3px rgba(0,0,0,.1);text-align:center;"><h1 style="color:${brandColor};margin-top:0;">E-mail Já Verificado!</h1><p style="color:#4b5563;font-size:1.1rem;">Este e-mail já foi confirmado anteriormente.</p></div></body></html>`;
             }
 
-            const newScore = Math.min(lead.score + 25, 100);
-            let newProbability = lead.probability;
-            if (newScore >= 80) newProbability = 'HIGH';
-            else if (newScore >= 50) newProbability = 'MEDIUM';
+            const score = Math.min(lead.score + 25, 100);
+            const probability = score >= 80 ? 'HIGH' : score >= 50 ? 'MEDIUM' : lead.probability;
+            await LeadModel.markVerified(leadId, score, probability);
 
-            await db.execute(
-                'UPDATE leads SET status = ?, score = ?, probability = ? WHERE id = ?',
-                ['verified', newScore, newProbability, leadId]
-            );
-
-            if (newProbability === 'HIGH') {
-                broadcastEvent('high_quality_lead', { id: lead.id, name: lead.name, email: lead.email, score: newScore });
+            if (probability === 'HIGH') {
+                broadcastEvent('high_quality_lead', { id: lead.id, name: lead.name, email: lead.email, score });
             }
+            const client = await ClientModel.findById(lead.clientId);
+            if (client) fireWebhook(lead, client, score, probability, 'verified');
 
-            try {
-                const [clientRows] = await db.execute<RowDataPacket[]>('SELECT webhookEnabled, webhookUrl, webhookMethod, webhookHeaders, webhookBodyTemplate FROM clients WHERE id = ?', [lead.clientId]);
-                if (clientRows.length > 0) {
-                    fireWebhook(lead, clientRows[0], newScore, newProbability, 'verified');
-                }
-            } catch (e) {
-                console.error('Error firing webhook:', e);
-            }
-
-            return `
-                <html>
-                  <body style="font-family: sans-serif; display:flex; justify-content:center; align-items:center; height:100vh; background:#f0f9ff; margin:0;">
-                    <div style="background:white; padding: 3rem; border-radius: 12px; box-shadow: 0 10px 15px -3px rgba(0,0,0,0.1); text-align:center;">
-                      <div style="font-size: 48px; margin-bottom: 1rem;">✅</div>
-                      <h1 style="color: ${brandColor}; margin-top:0;">E-mail Verificado com Sucesso!</h1>
-                      <p style="color:#4b5563; font-size:1.1rem;">Obrigado, <strong>${lead.name}</strong>. Seu interesse foi confirmado.</p>
-                      <p style="color:#9ca3af; font-size:0.9rem; margin-top:2rem;">(Score do lead atualizado: ${newScore})</p>
-                    </div>
-                  </body>
-                </html>
-              `;
-        } catch (e) {
+            return `<html><body style="font-family:sans-serif;display:flex;justify-content:center;align-items:center;height:100vh;background:#f0f9ff;margin:0;"><div style="background:white;padding:3rem;border-radius:12px;box-shadow:0 10px 15px -3px rgba(0,0,0,.1);text-align:center;"><h1 style="color:${brandColor};margin-top:0;">E-mail Verificado com Sucesso!</h1><p style="color:#4b5563;font-size:1.1rem;">Obrigado, seu interesse foi confirmado.</p><p style="color:#9ca3af;font-size:.9rem;margin-top:2rem;">Score do lead atualizado: ${score}</p></div></body></html>`;
+        } catch {
             set.status = 500;
             return 'Internal Server Error';
         }
     }
 
-    // 4. Deletar Leads (Múltiplos)
-    static async deleteMany(ids: string[], set: any) {
+    static async deleteMany(ids: string[], set: { status?: number | string }) {
+        if (ids.length === 0) {
+            set.status = 400;
+            return { error: 'No lead IDs provided' };
+        }
         try {
-            if (!ids || ids.length === 0) {
-                set.status = 400;
-                return { error: 'No lead IDs provided' };
-            }
-
-            const placeholders = ids.map(() => '?').join(',');
-            await db.execute(`DELETE FROM leads WHERE id IN (${placeholders})`, ids);
-
+            await LeadModel.deleteMany(ids);
             return { success: true };
-        } catch (e: any) {
+        } catch (error: any) {
             set.status = 500;
-            return { error: e.message };
+            return { error: error.message };
         }
     }
 
-    // 5. Revalidar Leads
-    static async revalidate(ids: string[], set: any) {
+    static async revalidate(ids: string[], set: { status?: number | string }) {
+        if (ids.length === 0) {
+            set.status = 400;
+            return { error: 'No lead IDs provided' };
+        }
         try {
-            if (!ids || ids.length === 0) {
-                set.status = 400;
-                return { error: 'No lead IDs provided' };
-            }
-
-            const placeholders = ids.map(() => '?').join(',');
-            const [leads] = await db.execute<RowDataPacket[]>(`SELECT * FROM leads WHERE id IN (${placeholders})`, ids);
-
-            let rules = { autoRejectThreshold: 30, autoVerifyThreshold: 90, customScoringRules: '' };
-            const [rulesRows] = await db.execute<RowDataPacket[]>("SELECT value FROM settings WHERE key = 'validation_rules'");
-
-            if (rulesRows.length > 0 && rulesRows[0].value) {
-                try { rules = { ...rules, ...JSON.parse(rulesRows[0].value) }; } catch(e) {}
-            }
-
+            const [leads, rules] = await Promise.all([LeadModel.findByIds(ids), SettingModel.getValidationRules()]);
             for (const lead of leads) {
-                const aiResult = await scoreLeadData(lead.name, lead.email, lead.whatsapp, rules.customScoringRules);
-
-                let newStatus = lead.status;
-                if (aiResult.score < rules.autoRejectThreshold) newStatus = 'rejected';
-                else if (aiResult.score >= rules.autoVerifyThreshold) newStatus = 'verified';
-                else if (lead.status === 'rejected') newStatus = 'pending_verification';
-
-                await db.execute(
-                    'UPDATE leads SET score = ?, probability = ?, reason = ?, status = ? WHERE id = ?',
-                    [aiResult.score, aiResult.probability, aiResult.reason, newStatus, lead.id]
-                );
-
-                if (newStatus === 'verified' && lead.status !== 'verified') {
-                    const [clientRows] = await db.execute<RowDataPacket[]>('SELECT * FROM clients WHERE id = ?', [lead.clientId]);
-                    if (clientRows.length > 0) {
-                        fireWebhook(lead, clientRows[0], aiResult.score, aiResult.probability, 'verified');
-                    }
+                const evaluation = await scoreLeadData(lead.name, lead.email, lead.whatsapp, rules.customScoringRules);
+                const status = evaluation.score < rules.autoRejectThreshold
+                    ? 'rejected'
+                    : evaluation.score >= rules.autoVerifyThreshold
+                        ? 'verified'
+                        : lead.status === 'rejected'
+                            ? 'pending_verification'
+                            : lead.status;
+                await LeadModel.updateEvaluation(lead.id, { ...evaluation, status });
+                if (status === 'verified' && lead.status !== 'verified') {
+                    const client = await ClientModel.findById(lead.clientId);
+                    if (client) fireWebhook(lead, client, evaluation.score, evaluation.probability, 'verified');
                 }
             }
-
             return { success: true };
-        } catch (e: any) {
+        } catch (error: any) {
             set.status = 500;
-            return { error: e.message };
+            return { error: error.message };
         }
     }
 }

@@ -1,0 +1,101 @@
+---
+import { Check, CircleAlert, CircleCheck, LoaderCircle, PlugZap } from 'lucide-astro';
+import Layout from '../../layouts/Layout.astro';
+---
+
+<Layout>
+  <div x-data="settingsForm('email')" class="min-h-full bg-slate-50 px-5 py-6 sm:px-8 lg:px-10">
+    <div class="mx-auto max-w-5xl">
+      <header class="mb-8 flex flex-col justify-between gap-5 sm:flex-row sm:items-end">
+        <div>
+          <p class="mb-2 text-sm font-semibold uppercase tracking-[0.18em] text-blue-600">Configurações</p>
+          <h1 class="text-3xl font-bold tracking-tight text-slate-900 sm:text-4xl">E-mail SMTP</h1>
+          <p class="mt-2 text-slate-500">Configure o servidor usado para enviar notificações e comunicações.</p>
+        </div>
+        <div class="flex items-center gap-2 rounded-xl border border-slate-200 bg-white px-4 py-3 shadow-sm">
+          <span class="h-2.5 w-2.5 rounded-full" :class="apiOnline ? 'bg-cyan-500' : 'bg-red-400'"></span>
+          <span class="text-sm font-medium text-slate-600">API <span x-text="apiOnline ? 'online' : 'offline'"></span></span>
+        </div>
+      </header>
+
+      <div x-show="loading" x-cloak class="mb-6 flex items-center gap-3 rounded-xl border border-slate-200 bg-white px-5 py-4 text-sm text-slate-500 shadow-sm">
+        <LoaderCircle class="animate-spin text-lg text-cyan-500" aria-hidden="true" />
+        Carregando configurações...
+      </div>
+
+      <form @submit.prevent="saveSettings()" class="space-y-6">
+        <fieldset :disabled="loading || saving" class="space-y-6">
+          <section class="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm sm:p-6">
+            <div class="flex flex-col justify-between gap-4 border-b border-slate-100 pb-5 sm:flex-row sm:items-start">
+              <div>
+                <h2 class="text-lg font-bold text-slate-900">Servidor de envio</h2>
+                <p class="mt-1 text-sm text-slate-500">Informe os dados fornecidos pelo seu provedor de e-mail.</p>
+              </div>
+              <label class="inline-flex cursor-pointer items-center gap-3">
+                <span class="text-sm font-semibold text-slate-600">Ativar SMTP</span>
+                <input type="checkbox" x-model="form.enabled" class="peer sr-only" />
+                <span class="relative h-6 w-11 rounded-full bg-slate-200 transition-colors peer-checked:bg-cyan-500 peer-focus:outline-none peer-focus:ring-2 peer-focus:ring-cyan-400/40 after:absolute after:left-1 after:top-1 after:h-4 after:w-4 after:rounded-full after:bg-white after:shadow-sm after:transition-transform peer-checked:after:translate-x-5"></span>
+              </label>
+            </div>
+            <div class="mt-6 grid gap-5 sm:grid-cols-2">
+              <label>
+                <span class="mb-2 block text-sm font-semibold text-slate-700">Servidor SMTP</span>
+                <input type="text" x-model="form.host" placeholder="smtp.exemplo.com" autocomplete="url" class="settings-input" />
+              </label>
+              <label>
+                <span class="mb-2 block text-sm font-semibold text-slate-700">Porta</span>
+                <input type="number" x-model.number="form.port" min="1" max="65535" placeholder="587" class="settings-input" />
+              </label>
+              <label>
+                <span class="mb-2 block text-sm font-semibold text-slate-700">Usuário</span>
+                <input type="text" x-model="form.username" placeholder="usuario@exemplo.com" autocomplete="username" class="settings-input" />
+              </label>
+              <label>
+                <span class="mb-2 block text-sm font-semibold text-slate-700">Senha</span>
+                <input type="password" x-model="form.password" placeholder="••••••••" autocomplete="current-password" class="settings-input" />
+              </label>
+            </div>
+          </section>
+
+          <section class="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm sm:p-6">
+            <div class="border-b border-slate-100 pb-5">
+              <h2 class="text-lg font-bold text-slate-900">Identidade do remetente</h2>
+              <p class="mt-1 text-sm text-slate-500">Defina como seus e-mails aparecerão para os destinatários.</p>
+            </div>
+            <div class="mt-6 grid gap-5 sm:grid-cols-2">
+              <label>
+                <span class="mb-2 block text-sm font-semibold text-slate-700">E-mail de envio</span>
+                <input type="email" x-model="form.fromEmail" placeholder="contato@exemplo.com" autocomplete="email" class="settings-input" />
+              </label>
+              <label>
+                <span class="mb-2 block text-sm font-semibold text-slate-700">Nome de exibição</span>
+                <input type="text" x-model="form.fromName" placeholder="LeadSense AI" autocomplete="organization" class="settings-input" />
+              </label>
+            </div>
+            <label class="mt-6 inline-flex cursor-pointer items-center gap-3">
+              <input type="checkbox" x-model="form.secure" class="h-4 w-4 rounded border-slate-300 text-cyan-500 focus:ring-cyan-400" />
+              <span class="text-sm font-medium text-slate-600">Usar conexão segura (TLS/SSL)</span>
+            </label>
+          </section>
+        </fieldset>
+
+        <div class="flex flex-col-reverse items-stretch justify-between gap-4 sm:flex-row sm:items-center">
+          <button type="button" @click="testEmailConnection()" :disabled="loading || saving || testing" class="inline-flex items-center justify-center gap-2 rounded-xl border border-slate-200 bg-white px-4 py-3 text-sm font-semibold text-slate-700 shadow-sm transition-colors hover:border-slate-300 hover:bg-slate-50 focus:outline-none focus:ring-2 focus:ring-cyan-400/50 disabled:cursor-wait disabled:opacity-60">
+            <PlugZap class="text-lg" :class="testing ? 'animate-pulse' : ''" aria-hidden="true" />
+            <span x-text="testing ? 'Testando conexão...' : 'Testar conexão'"></span>
+          </button>
+          <button type="submit" :disabled="loading || saving" class="inline-flex items-center justify-center gap-2 rounded-xl bg-slate-900 px-5 py-3 text-sm font-semibold text-white shadow-sm transition-colors hover:bg-slate-800 focus:outline-none focus:ring-2 focus:ring-cyan-400/50 disabled:cursor-wait disabled:opacity-60">
+            <Check class="text-lg" aria-hidden="true" />
+            <span x-text="saving ? 'Salvando...' : 'Salvar alterações'"></span>
+          </button>
+        </div>
+
+        <div x-show="feedback" x-cloak class="flex items-center gap-3 rounded-xl border px-4 py-3 text-sm font-medium" :class="feedbackType === 'success' ? 'border-cyan-200 bg-cyan-50 text-blue-700' : 'border-red-200 bg-red-50 text-red-700'" role="status">
+          <CircleCheck x-show="feedbackType === 'success'" x-cloak class="text-lg" aria-hidden="true" />
+          <CircleAlert x-show="feedbackType !== 'success'" x-cloak class="text-lg text-red-600" aria-hidden="true" />
+          <span x-text="feedback"></span>
+        </div>
+      </form>
+    </div>
+  </div>
+</Layout>

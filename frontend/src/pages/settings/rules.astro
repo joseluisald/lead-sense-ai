@@ -1,0 +1,111 @@
+---
+import { Check, CircleAlert, CircleCheck, LoaderCircle, Plus, X } from 'lucide-astro';
+import Layout from '../../layouts/Layout.astro';
+---
+
+<Layout>
+  <div x-data="settingsForm('rules')" class="min-h-full bg-slate-50 px-5 py-6 sm:px-8 lg:px-10">
+    <div class="mx-auto max-w-5xl">
+      <header class="mb-8 flex flex-col justify-between gap-5 sm:flex-row sm:items-end">
+        <div>
+          <p class="mb-2 text-sm font-semibold uppercase tracking-[0.18em] text-blue-600">Configurações</p>
+          <h1 class="text-3xl font-bold tracking-tight text-slate-900 sm:text-4xl">Regras de validação</h1>
+          <p class="mt-2 text-slate-500">Defina como os leads serão analisados e classificados automaticamente.</p>
+        </div>
+        <div class="flex items-center gap-2 rounded-xl border border-slate-200 bg-white px-4 py-3 shadow-sm">
+          <span class="h-2.5 w-2.5 rounded-full" :class="apiOnline ? 'bg-cyan-500' : 'bg-red-400'"></span>
+          <span class="text-sm font-medium text-slate-600">API <span x-text="apiOnline ? 'online' : 'offline'"></span></span>
+        </div>
+      </header>
+
+      <div x-show="loading" x-cloak class="mb-6 flex items-center gap-3 rounded-xl border border-slate-200 bg-white px-5 py-4 text-sm text-slate-500 shadow-sm">
+        <LoaderCircle class="animate-spin text-lg text-cyan-500" aria-hidden="true" />
+        Carregando configurações...
+      </div>
+
+      <form @submit.prevent="saveSettings()" class="space-y-6">
+        <fieldset :disabled="loading || saving" class="space-y-6">
+          <section class="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm sm:p-6">
+            <div class="border-b border-slate-100 pb-5">
+              <h2 class="text-lg font-bold text-slate-900">Validação automática</h2>
+              <p class="mt-1 text-sm text-slate-500">Escolha quais verificações devem ser aplicadas aos novos leads.</p>
+            </div>
+            <div class="divide-y divide-slate-100">
+              <label class="flex cursor-pointer items-center justify-between gap-5 py-5">
+                <span>
+                  <span class="block text-sm font-semibold text-slate-700">Validar leads automaticamente</span>
+                  <span class="mt-1 block text-sm text-slate-400">Inicia a análise assim que um novo lead é recebido.</span>
+                </span>
+                <input type="checkbox" x-model="form.autoValidate" class="peer sr-only" />
+                <span class="relative h-6 w-11 shrink-0 rounded-full bg-slate-200 transition-colors peer-checked:bg-cyan-500 peer-focus:outline-none peer-focus:ring-2 peer-focus:ring-cyan-400/40 after:absolute after:left-1 after:top-1 after:h-4 after:w-4 after:rounded-full after:bg-white after:shadow-sm after:transition-transform peer-checked:after:translate-x-5"></span>
+              </label>
+              <label class="flex cursor-pointer items-center justify-between gap-5 py-5">
+                <span>
+                  <span class="block text-sm font-semibold text-slate-700">Bloquear e-mails descartáveis</span>
+                  <span class="mt-1 block text-sm text-slate-400">Rejeita endereços de provedores temporários conhecidos.</span>
+                </span>
+                <input type="checkbox" x-model="form.blockDisposableEmails" class="peer sr-only" />
+                <span class="relative h-6 w-11 shrink-0 rounded-full bg-slate-200 transition-colors peer-checked:bg-cyan-500 peer-focus:outline-none peer-focus:ring-2 peer-focus:ring-cyan-400/40 after:absolute after:left-1 after:top-1 after:h-4 after:w-4 after:rounded-full after:bg-white after:shadow-sm after:transition-transform peer-checked:after:translate-x-5"></span>
+              </label>
+              <label class="flex cursor-pointer items-center justify-between gap-5 py-5">
+                <span>
+                  <span class="block text-sm font-semibold text-slate-700">Exigir telefone</span>
+                  <span class="mt-1 block text-sm text-slate-400">Considera o telefone obrigatório para aprovação do lead.</span>
+                </span>
+                <input type="checkbox" x-model="form.requirePhone" class="peer sr-only" />
+                <span class="relative h-6 w-11 shrink-0 rounded-full bg-slate-200 transition-colors peer-checked:bg-cyan-500 peer-focus:outline-none peer-focus:ring-2 peer-focus:ring-cyan-400/40 after:absolute after:left-1 after:top-1 after:h-4 after:w-4 after:rounded-full after:bg-white after:shadow-sm after:transition-transform peer-checked:after:translate-x-5"></span>
+              </label>
+            </div>
+          </section>
+
+          <section class="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm sm:p-6">
+            <div class="border-b border-slate-100 pb-5">
+              <h2 class="text-lg font-bold text-slate-900">Pontuação mínima</h2>
+              <p class="mt-1 text-sm text-slate-500">Defina o score mínimo para considerar um lead qualificado.</p>
+            </div>
+            <div class="mt-6 max-w-md">
+              <label>
+                <span class="mb-2 block text-sm font-semibold text-slate-700">Score mínimo: <span class="text-blue-600" x-text="form.minimumScore">50</span>/100</span>
+                <input type="range" x-model.number="form.minimumScore" min="0" max="100" step="5" class="h-2 w-full cursor-pointer appearance-none rounded-lg bg-slate-200 accent-cyan-500" />
+              </label>
+              <div class="mt-2 flex justify-between text-xs text-slate-400"><span>0 — Todos</span><span>100 — Mais rigoroso</span></div>
+            </div>
+          </section>
+
+          <section class="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm sm:p-6">
+            <div class="border-b border-slate-100 pb-5">
+              <h2 class="text-lg font-bold text-slate-900">Domínios bloqueados</h2>
+              <p class="mt-1 text-sm text-slate-500">Adicione domínios que nunca devem ser aceitos pela plataforma.</p>
+            </div>
+            <div class="mt-6 flex flex-col gap-3 sm:flex-row">
+              <label class="flex-1">
+                <span class="sr-only">Novo domínio bloqueado</span>
+                <input type="text" x-model="blockedDomainInput" @keydown.enter.prevent="addBlockedDomain()" placeholder="exemplo.com" class="settings-input" />
+              </label>
+              <button type="button" @click="addBlockedDomain()" class="inline-flex items-center justify-center gap-2 rounded-xl border border-slate-200 bg-white px-4 py-3 text-sm font-semibold text-slate-700 transition-colors hover:bg-slate-50 focus:outline-none focus:ring-2 focus:ring-cyan-400/50"><Plus class="text-lg" aria-hidden="true" />Adicionar domínio</button>
+            </div>
+            <div class="mt-4 flex flex-wrap gap-2" x-show="form.blockedDomains.length > 0">
+              <template x-for="domain in form.blockedDomains" :key="domain">
+                <span class="inline-flex items-center gap-2 rounded-lg bg-slate-100 px-3 py-2 text-sm font-medium text-slate-600"><span x-text="domain"></span><button type="button" @click="removeBlockedDomain(domain)" class="text-slate-400 transition-colors hover:text-red-500 focus:outline-none" :aria-label="`Remover domínio ${domain}`"><X aria-hidden="true" /></button></span>
+              </template>
+            </div>
+            <p x-show="form.blockedDomains.length === 0" class="mt-4 text-sm text-slate-400">Nenhum domínio bloqueado.</p>
+          </section>
+        </fieldset>
+
+        <div class="flex justify-end">
+          <button type="submit" :disabled="loading || saving" class="inline-flex items-center justify-center gap-2 rounded-xl bg-slate-900 px-5 py-3 text-sm font-semibold text-white shadow-sm transition-colors hover:bg-slate-800 focus:outline-none focus:ring-2 focus:ring-cyan-400/50 disabled:cursor-wait disabled:opacity-60">
+            <Check class="text-lg" aria-hidden="true" />
+            <span x-text="saving ? 'Salvando...' : 'Salvar alterações'"></span>
+          </button>
+        </div>
+
+        <div x-show="feedback" x-cloak class="flex items-center gap-3 rounded-xl border px-4 py-3 text-sm font-medium" :class="feedbackType === 'success' ? 'border-cyan-200 bg-cyan-50 text-blue-700' : 'border-red-200 bg-red-50 text-red-700'" role="status">
+          <CircleCheck x-show="feedbackType === 'success'" x-cloak class="text-lg" aria-hidden="true" />
+          <CircleAlert x-show="feedbackType !== 'success'" x-cloak class="text-lg text-red-600" aria-hidden="true" />
+          <span x-text="feedback"></span>
+        </div>
+      </form>
+    </div>
+  </div>
+</Layout>

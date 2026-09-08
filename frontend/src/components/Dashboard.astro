@@ -1,0 +1,149 @@
+---
+import { CircleCheck, Info, Sparkles, TrendingUp, UsersRound } from 'lucide-astro';
+---
+
+<section x-data="dashboard" class="min-h-full bg-slate-50 px-5 py-6 sm:px-8 lg:px-10">
+  <div class="mx-auto max-w-7xl">
+    <header class="mb-8 flex flex-col justify-between gap-4 sm:flex-row sm:items-end">
+      <div>
+        <p class="mb-2 text-sm font-semibold uppercase tracking-[0.18em] text-blue-600">Visão geral</p>
+        <h1 class="text-3xl font-bold tracking-tight text-slate-900 sm:text-4xl">Olá, administrador</h1>
+        <p class="mt-2 text-slate-500">Acompanhe a qualidade dos seus leads em um só lugar.</p>
+      </div>
+      <div class="flex items-center gap-3 self-start rounded-xl border border-slate-200 bg-white px-4 py-3 shadow-sm sm:self-auto">
+        <span class="h-2.5 w-2.5 rounded-full" :class="apiOnline ? 'bg-cyan-500' : 'bg-red-400'"></span>
+        <span class="text-sm font-medium text-slate-600">API <span x-text="apiOnline ? 'online' : 'offline'"></span></span>
+      </div>
+    </header>
+
+    <div x-show="!loading && !apiOnline" x-cloak class="mb-6 flex items-start gap-3 rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-800">
+      <Info class="mt-0.5 text-lg" aria-hidden="true" />
+      <p>Conecte o backend para visualizar dados reais. A estrutura do dashboard está pronta.</p>
+    </div>
+
+    <div class="mb-8 grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
+      <article class="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
+        <div class="flex items-start justify-between">
+          <div>
+            <p class="text-sm font-medium text-slate-500">Total de leads</p>
+            <p class="mt-3 text-3xl font-bold text-slate-900" x-text="stats.totalLeads.toLocaleString('pt-BR')">0</p>
+          </div>
+          <span class="flex h-11 w-11 items-center justify-center rounded-xl bg-cyan-500/10 text-blue-600"><UsersRound class="text-xl" aria-hidden="true" /></span>
+        </div>
+        <p class="mt-4 text-xs text-slate-400">Leads recebidos pela plataforma</p>
+      </article>
+
+      <article class="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
+        <div class="flex items-start justify-between">
+          <div>
+            <p class="text-sm font-medium text-slate-500">Leads verificados</p>
+            <p class="mt-3 text-3xl font-bold text-slate-900" x-text="stats.verifiedLeads.toLocaleString('pt-BR')">0</p>
+          </div>
+          <span class="flex h-11 w-11 items-center justify-center rounded-xl bg-blue-500/10 text-blue-600"><CircleCheck class="text-xl" aria-hidden="true" /></span>
+        </div>
+        <p class="mt-4 text-xs text-slate-400">Contatos que confirmaram interesse</p>
+      </article>
+
+      <article class="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
+        <div class="flex items-start justify-between">
+          <div>
+            <p class="text-sm font-medium text-slate-500">Score médio</p>
+            <p class="mt-3 text-3xl font-bold text-slate-900"><span x-text="stats.avgScore">0</span><span class="text-lg font-medium text-slate-400">/100</span></p>
+          </div>
+          <span class="flex h-11 w-11 items-center justify-center rounded-xl bg-violet-500/10 text-violet-600"><Sparkles class="text-xl" aria-hidden="true" /></span>
+        </div>
+        <p class="mt-4 text-xs text-slate-400">Qualidade média dos contatos</p>
+      </article>
+
+      <article class="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
+        <div class="flex items-start justify-between">
+          <div>
+            <p class="text-sm font-medium text-slate-500">Taxa de conversão</p>
+            <p class="mt-3 text-3xl font-bold text-slate-900"><span x-text="stats.conversionRate">0</span>%</p>
+          </div>
+          <span class="flex h-11 w-11 items-center justify-center rounded-xl bg-amber-500/10 text-amber-600"><TrendingUp class="text-xl" aria-hidden="true" /></span>
+        </div>
+        <p class="mt-4 text-xs text-slate-400">Leads verificados sobre o total</p>
+      </article>
+    </div>
+
+    <div class="grid gap-6 xl:grid-cols-[1.55fr_1fr]">
+      <section class="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm sm:p-6">
+        <div class="mb-6 flex items-start justify-between gap-4">
+          <div>
+            <h2 class="text-lg font-bold text-slate-900">Evolução dos leads</h2>
+            <p class="mt-1 text-sm text-slate-500">Volume de leads nos últimos dias</p>
+          </div>
+          <span class="rounded-lg bg-cyan-50 px-3 py-1.5 text-xs font-semibold text-blue-700">7 dias</span>
+        </div>
+        <div x-show="!loading && recentTrend.length > 0" x-cloak>
+          <div class="relative h-56 overflow-hidden rounded-xl bg-slate-50 px-2 py-3">
+            <div class="pointer-events-none absolute inset-x-3 top-6 border-t border-dashed border-slate-200"></div>
+            <div class="pointer-events-none absolute inset-x-3 top-1/2 border-t border-dashed border-slate-200"></div>
+            <div class="pointer-events-none absolute inset-x-3 bottom-7 border-t border-dashed border-slate-200"></div>
+            <svg viewBox="0 0 100 100" preserveAspectRatio="none" class="relative h-full w-full" aria-label="Gráfico de evolução dos leads" role="img">
+              <polyline :points="trendPoints" fill="none" class="stroke-cyan-500" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"></polyline>
+            </svg>
+          </div>
+          <div class="mt-3 flex justify-between px-2 text-xs text-slate-400">
+            <template x-for="day in recentTrend" :key="day.date"><span x-text="formatDate(day.date)"></span></template>
+          </div>
+        </div>
+        <div x-show="!loading && recentTrend.length === 0" x-cloak class="flex h-56 items-center justify-center rounded-xl bg-slate-50 text-sm text-slate-400">Ainda não há dados de tendência.</div>
+        <div x-show="loading" class="flex h-56 items-center justify-center rounded-xl bg-slate-50 text-sm text-slate-400">Carregando dados...</div>
+      </section>
+
+      <section class="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm sm:p-6">
+        <div class="mb-6">
+          <h2 class="text-lg font-bold text-slate-900">Qualidade dos leads</h2>
+          <p class="mt-1 text-sm text-slate-500">Distribuição por probabilidade</p>
+        </div>
+        <div class="space-y-5">
+          <template x-for="item in stats.probStats" :key="item.name">
+            <div>
+              <div class="mb-2 flex items-center justify-between text-sm">
+                <span class="flex items-center gap-2 font-medium text-slate-700"><span class="h-2.5 w-2.5 rounded-full" :class="probabilityDotClass(item.name)"></span><span x-text="probabilityLabel(item.name)"></span></span>
+                <span class="font-bold text-slate-900" x-text="Number(item.value).toLocaleString('pt-BR')">0</span>
+              </div>
+              <div class="h-2 overflow-hidden rounded-full bg-slate-100"><div class="h-full rounded-full transition-all" :class="[probabilityColorClass(item.name), probabilityWidth(item.value)]"></div></div>
+            </div>
+          </template>
+        </div>
+        <div class="mt-8 rounded-xl bg-slate-50 p-4">
+          <p class="text-xs font-semibold uppercase tracking-wide text-slate-400">Indicador principal</p>
+          <p class="mt-2 text-2xl font-bold text-slate-900"><span x-text="stats.conversionRate">0</span>% <span class="text-sm font-medium text-slate-500">de conversão</span></p>
+        </div>
+      </section>
+    </div>
+
+    <section class="mt-6 overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm">
+      <div class="flex flex-col justify-between gap-3 border-b border-slate-100 px-5 py-5 sm:flex-row sm:items-center sm:px-6">
+        <div>
+          <h2 class="text-lg font-bold text-slate-900">Leads recentes</h2>
+          <p class="mt-1 text-sm text-slate-500">Últimos contatos recebidos pela API</p>
+        </div>
+        <a href="/leads" class="inline-flex items-center gap-2 text-sm font-semibold text-blue-600 transition-colors hover:text-blue-700">Ver todos <i class="ph ph-arrow-right"></i></a>
+      </div>
+      <div x-show="!loading && leads.length > 0" x-cloak class="overflow-x-auto">
+        <table class="w-full min-w-[680px] text-left">
+          <thead class="bg-slate-50 text-xs uppercase tracking-wide text-slate-400">
+            <tr><th class="px-6 py-3 font-semibold">Lead</th><th class="px-6 py-3 font-semibold">Cliente</th><th class="px-6 py-3 font-semibold">Score</th><th class="px-6 py-3 font-semibold">Status</th><th class="px-6 py-3 font-semibold">Recebido em</th></tr>
+          </thead>
+          <tbody class="divide-y divide-slate-100">
+            <template x-for="lead in leads" :key="lead.id">
+              <tr class="transition-colors hover:bg-slate-50">
+                <td class="px-6 py-4"><p class="font-semibold text-slate-800" x-text="lead.name"></p><p class="mt-0.5 text-xs text-slate-400" x-text="lead.email"></p></td>
+                <td class="px-6 py-4 text-sm text-slate-500" x-text="lead.clientName || 'Não informado'"></td>
+                <td class="px-6 py-4"><span class="font-bold text-slate-800"><span x-text="Number(lead.score)">0</span><span class="font-normal text-slate-400">/100</span></span></td>
+                <td class="px-6 py-4"><span class="rounded-full px-2.5 py-1 text-xs font-semibold" :class="statusClass(lead.status)" x-text="statusLabel(lead.status)"></span></td>
+                <td class="px-6 py-4 text-sm text-slate-500" x-text="formatDate(lead.createdAt)"></td>
+              </tr>
+            </template>
+          </tbody>
+        </table>
+      </div>
+      <div x-show="!loading && leads.length === 0" x-cloak class="flex flex-col items-center justify-center px-6 py-14 text-center"><span class="flex h-14 w-14 items-center justify-center rounded-2xl bg-slate-100 text-slate-400"><i class="ph ph-users-three text-2xl"></i></span><h3 class="mt-4 font-semibold text-slate-700">Nenhum lead recente</h3><p class="mt-1 max-w-sm text-sm text-slate-400">Quando novos leads forem recebidos, eles aparecerão nesta lista.</p></div>
+      <div x-show="loading" class="flex flex-col items-center justify-center px-6 py-14 text-center text-sm text-slate-400">Carregando leads...</div>
+    </section>
+  </div>
+</section>

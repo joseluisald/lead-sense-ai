@@ -55,7 +55,22 @@ export async function initializeDatabase() {
       )
     `);
 
-        // 4. Tabela Settings
+        // 4. Tabela Users
+        await db.execute(`
+      CREATE TABLE IF NOT EXISTS users (
+        id VARCHAR(36) PRIMARY KEY,
+        name VARCHAR(255) NOT NULL,
+        email VARCHAR(255) UNIQUE NOT NULL,
+        passwordHash VARCHAR(255) NOT NULL,
+        resetPasswordTokenHash VARCHAR(64),
+        resetPasswordExpiresAt DATETIME,
+        createdAt DATETIME DEFAULT CURRENT_TIMESTAMP,
+        updatedAt DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+        INDEX idx_users_reset_token (resetPasswordTokenHash)
+      )
+    `);
+
+        // 5. Tabela Settings
         // 'key' é uma palavra reservada no MySQL, por isso usamos crases (`key`)
         await db.execute(`
       CREATE TABLE IF NOT EXISTS settings (

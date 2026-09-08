@@ -1,0 +1,17 @@
+---
+import Sidebar from '../components/Sidebar.astro';
+
+import '../styles/global.css';
+---
+<html lang="pt-BR">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width" />
+    <title>LeadSense Admin</title>
+  </head>
+  <body class="flex h-screen bg-slate-50 overflow-hidden text-slate-800 font-sans">
+    <main class="flex-1 overflow-y-auto relative">
+      <slot />
+    </main>
+  </body>
+</html>

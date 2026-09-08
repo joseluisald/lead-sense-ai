@@ -15,14 +15,18 @@
     "@alpinejs/collapse": "^3.16.3",
     "@astrojs/alpinejs": "^1.0.0",
     "@elysiajs/eden": "^1.4.9",
-    "@phosphor-icons/web": "^2.1.2",
     "@tailwindcss/vite": "^4.3.3",
     "astro": "^7.2.7",
     "astro-compress": "^2.4.3",
+    "lucide-astro": "^0.556.0",
     "tailwindcss": "^4.3.3"
   },
   "devDependencies": {
     "@types/alpinejs": "^3.13.11",
-    "alpinejs": "^3.16.3"
+    "alpinejs": "^3.16.3",
+    "sharp": "^0.35.4"
+  },
+  "allowScripts": {
+    "esbuild@0.28.2": true
   }
 }
