@@ -1,8 +1,10 @@
-// src/routes/setting.routes.ts
 import { Elysia, t } from 'elysia';
 import { SettingController } from '../controllers/setting.controller';
+import { authenticate, jwtPlugin } from '../plugins/auth';
 
 export const settingRoutes = new Elysia({ prefix: '/settings' })
+    .use(jwtPlugin)
+    .onBeforeHandle(authenticate)
     // --- EMAIL ---
     .get(
         '/email',

@@ -9,11 +9,13 @@
     "dev": "astro dev",
     "build": "astro build",
     "preview": "astro preview",
+    "start": "bun ./dist/server/entry.mjs",
     "astro": "astro"
   },
   "dependencies": {
     "@alpinejs/collapse": "^3.16.3",
     "@astrojs/alpinejs": "^1.0.0",
+    "@astrojs/node": "^11.1.5",
     "@elysiajs/eden": "^1.4.9",
     "@tailwindcss/vite": "^4.3.3",
     "astro": "^7.2.7",

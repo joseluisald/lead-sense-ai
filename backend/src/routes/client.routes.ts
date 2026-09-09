@@ -1,8 +1,10 @@
-// src/routes/client.routes.ts
 import { Elysia, t } from 'elysia';
 import { ClientController } from '../controllers/client.controller';
+import { authenticate, jwtPlugin } from '../plugins/auth';
 
 export const clientRoutes = new Elysia({ prefix: '/clients' })
+    .use(jwtPlugin)
+    .onBeforeHandle(authenticate)
     .post(
         '/',
         ({ body, set }) => ClientController.create(body, set),

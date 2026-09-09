@@ -1,13 +1,9 @@
-import { randomBytes } from 'node:crypto';
-import { jwt } from '@elysiajs/jwt';
 import { Elysia, t } from 'elysia';
 import { AuthController } from '../controllers/auth.controller';
+import { jwtPlugin } from '../plugins/auth';
 
-const jwtSecret = process.env.JWT_SECRET || randomBytes(32).toString('hex');
-if (!process.env.JWT_SECRET) console.warn('JWT_SECRET não definido. As sessões serão encerradas quando o servidor reiniciar.');
-
-export const authRoutes = new Elysia({ prefix: "/auth" })
-  .use(jwt({ name: "jwt", secret: jwtSecret }))
+export const authRoutes = new Elysia({ prefix: '/auth' })
+  .use(jwtPlugin)
   .post(
     "/signup",
     ({ body, set, jwt }) => AuthController.signup(body, set, jwt),

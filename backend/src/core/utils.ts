@@ -1,4 +1,4 @@
-// core/utils.ts
+import { lookup } from 'node:dns/promises';
 import nodemailer from 'nodemailer';
 import { db } from './database';
 import { GoogleGenAI } from '@google/genai';
@@ -87,8 +87,37 @@ export function broadcastEvent(eventName: string, data: any) {
 /**
  * 3. Disparo de Webhooks
  */
+function isPrivateAddress(address: string) {
+    const normalized = address.toLowerCase();
+    const ipv4 = normalized.startsWith('::ffff:') ? normalized.slice(7) : normalized;
+    if (ipv4.includes('.')) {
+        return /^(0\.|10\.|127\.|169\.254\.|192\.168\.|172\.(1[6-9]|2\d|3[01])\.)/.test(ipv4);
+    }
+
+    return normalized === '::' || normalized === '::1' || /^(fc|fd|fe80:)/.test(normalized);
+}
+
+async function isSafeWebhookUrl(rawUrl: string) {
+    try {
+        const url = new URL(rawUrl);
+        if (!['http:', 'https:'].includes(url.protocol)) return false;
+        if (process.env.NODE_ENV === 'production' && url.protocol !== 'https:') return false;
+        if (url.username || url.password) return false;
+
+        const addresses = await lookup(url.hostname, { all: true });
+        return addresses.length > 0 && addresses.every(({ address }) => !isPrivateAddress(address));
+    } catch {
+        return false;
+    }
+}
+
 export async function fireWebhook(lead: any, client: any, score: number, probability: string, event: string) {
-    if (!client.webhookEnabled || !client.webhookUrl) return;
+    if (!client.webhookEnabled || !client.webhookUrl || !(await isSafeWebhookUrl(client.webhookUrl))) {
+        if (client.webhookEnabled && client.webhookUrl) {
+            console.warn(`Webhook bloqueado por URL inválida ou não permitida para o cliente ${client.id}.`);
+        }
+        return;
+    }
 
     const payload = {
         event,
@@ -104,9 +133,18 @@ export async function fireWebhook(lead: any, client: any, score: number, probabi
     };
 
     try {
-        const headers = client.webhookHeaders ? JSON.parse(client.webhookHeaders) : { 'Content-Type': 'application/json' };
+        let headers = { 'Content-Type': 'application/json' };
+        if (client.webhookHeaders) {
+            const configuredHeaders = JSON.parse(client.webhookHeaders);
+            if (configuredHeaders && typeof configuredHeaders === 'object' && !Array.isArray(configuredHeaders)) {
+                headers = { ...headers, ...configuredHeaders };
+            }
+        }
+        const method = ['POST', 'PUT', 'PATCH'].includes(String(client.webhookMethod || '').toUpperCase())
+            ? String(client.webhookMethod).toUpperCase()
+            : 'POST';
         const response = await fetch(client.webhookUrl, {
-            method: client.webhookMethod || 'POST',
+            method,
             headers,
             body: JSON.stringify(payload)
         });
@@ -121,9 +159,13 @@ export async function fireWebhook(lead: any, client: any, score: number, probabi
  */
 export async function logApiRequest(endpoint: string, method: string, body: any, statusCode: number, response: any) {
     try {
+        const safeBody = body && typeof body === 'object' ? { fields: Object.keys(body) } : undefined;
+        const safeResponse = response && typeof response === 'object'
+            ? Object.fromEntries(Object.entries(response).filter(([key]) => !['verificationLink', 'token', 'apiKey'].includes(key)))
+            : response;
         await db.execute(
             `INSERT INTO api_logs (endpoint, method, requestBody, statusCode, responseBody) VALUES (?, ?, ?, ?, ?)`,
-            [endpoint, method, JSON.stringify(body), statusCode, JSON.stringify(response)]
+            [endpoint, method, JSON.stringify(safeBody), statusCode, JSON.stringify(safeResponse)]
         );
     } catch (error) {
         console.error('Falha ao salvar log da API:', error);
@@ -133,15 +175,26 @@ export async function logApiRequest(endpoint: string, method: string, body: any,
 /**
  * 5. Template de E-mail
  */
+function escapeHtml(value: string) {
+    return value.replace(/[&<>"']/g, (character) => ({
+        '&': '&amp;',
+        '<': '&lt;',
+        '>': '&gt;',
+        '"': '&quot;',
+        "'": '&#039;'
+    })[character] || character);
+}
+
 export function buildEmailHtml(subject: string, bodyText: string, btnText: string, btnColor: string, link: string) {
-    const formattedBody = bodyText.replace(/\n/g, '<br/>');
+    const formattedBody = escapeHtml(bodyText).replace(/\n/g, '<br/>');
+    const safeColor = /^#[0-9a-f]{6}$/i.test(btnColor) ? btnColor : '#2563eb';
     return `
     <div style="font-family: sans-serif; max-width: 600px; margin: 0 auto; padding: 20px; border: 1px solid #eaeaea; border-radius: 8px;">
-      <h2 style="color: #333;">${subject}</h2>
+      <h2 style="color: #333;">${escapeHtml(subject)}</h2>
       <p style="color: #555; font-size: 16px; line-height: 1.5;">${formattedBody}</p>
       <div style="text-align: center; margin: 30px 0;">
-        <a href="${link}" style="background-color: ${btnColor}; color: white; padding: 12px 24px; text-decoration: none; border-radius: 6px; font-weight: bold; font-size: 16px; display: inline-block;">
-          ${btnText}
+        <a href="${escapeHtml(link)}" style="background-color: ${safeColor}; color: white; padding: 12px 24px; text-decoration: none; border-radius: 6px; font-weight: bold; font-size: 16px; display: inline-block;">
+          ${escapeHtml(btnText)}
         </a>
       </div>
       <hr style="border: none; border-top: 1px solid #eaeaea; margin: 20px 0;" />
@@ -162,15 +215,23 @@ export async function sendEmailViaSmtp(to: string, subject: string, html: string
         }
 
         const smtpConfig = JSON.parse(smtpRows[0].value);
+        if (smtpConfig.enabled === false) {
+            console.warn('SMTP está desativado. E-mail não enviado.');
+            return false;
+        }
+
+        const port = Number(smtpConfig.port);
+        const username = smtpConfig.username || smtpConfig.user || '';
+        const password = smtpConfig.password ?? smtpConfig.pass ?? '';
         const transporter = nodemailer.createTransport({
             host: smtpConfig.host,
-            port: Number(smtpConfig.port),
-            secure: Number(smtpConfig.port) === 465,
-            auth: { user: smtpConfig.user, pass: smtpConfig.pass }
+            port,
+            secure: smtpConfig.secure ?? port === 465,
+            ...(username || password ? { auth: { user: username, pass: password } } : {})
         });
 
         const info = await transporter.sendMail({
-            from: `"${smtpConfig.senderName || 'LeadSense'}" <${smtpConfig.senderEmail || smtpConfig.user}>`,
+            from: `"${smtpConfig.fromName || smtpConfig.senderName || 'LeadSense'}" <${smtpConfig.fromEmail || smtpConfig.senderEmail || username}>`,
             to,
             subject,
             html

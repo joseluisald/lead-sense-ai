@@ -2,6 +2,7 @@
 import { defineConfig } from 'astro/config';
 
 import tailwindcss from '@tailwindcss/vite';
+import node from '@astrojs/node';
 import alpinejs from '@astrojs/alpinejs';
 import compress from 'astro-compress';
 
@@ -12,6 +13,10 @@ export default defineConfig({
   build: {
     inlineStylesheets: 'auto'
   },
+  output: 'server',
+  adapter: node({
+    mode: 'standalone'
+  }),
   integrations: [
     alpinejs({ entrypoint: '/src/entrypoint' }),
     compress({

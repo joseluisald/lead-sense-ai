@@ -1,6 +1,8 @@
 ---
-import { ArrowLeft, ArrowRight, Eye, EyeOff, Leaf, ShieldCheck } from 'lucide-astro';
+import { AlertCircle, ArrowLeft, ArrowRight, Eye, EyeOff, Leaf, ShieldCheck } from 'lucide-astro';
 import '../styles/global.css';
+
+const apiBaseUrl = (import.meta.env.PUBLIC_API_URL || 'http://localhost:3000').replace(/\/$/, '');
 ---
 
 <html lang="pt-BR">
@@ -55,21 +57,57 @@ import '../styles/global.css';
             <p class="mt-2 text-slate-500">Preencha seus dados para começar a organizar seus leads.</p>
           </div>
 
-          <form x-data="{ passwordVisible: false, confirmPasswordVisible: false }" @submit.prevent class="space-y-4">
+          <form x-data={`{
+            apiBaseUrl: ${JSON.stringify(apiBaseUrl)},
+            name: '',
+            email: '',
+            password: '',
+            passwordConfirmation: '',
+            passwordVisible: false,
+            confirmPasswordVisible: false,
+            submitting: false,
+            error: '',
+            async submit() {
+              this.error = '';
+              if (this.password !== this.passwordConfirmation) {
+                this.error = 'As senhas não conferem.';
+                return;
+              }
+
+              this.submitting = true;
+              try {
+                const response = await fetch(this.apiBaseUrl + '/api/auth/signup', {
+                  method: 'POST',
+                  headers: { 'Content-Type': 'application/json' },
+                  body: JSON.stringify({ name: this.name, email: this.email, password: this.password })
+                });
+                const data = await response.json().catch(() => ({}));
+                if (!response.ok) throw new Error(data.error || 'Não foi possível criar a conta.');
+
+                localStorage.setItem('auth_token', data.token);
+                localStorage.setItem('user', JSON.stringify(data.user));
+                window.location.href = '/dashboard';
+              } catch (error) {
+                this.error = error.message;
+              } finally {
+                this.submitting = false;
+              }
+            }
+          }`} @submit.prevent="submit" class="space-y-4">
             <label class="block">
               <span class="mb-2 block text-sm font-semibold text-slate-700">Nome completo</span>
-              <input type="text" name="name" placeholder="Seu nome" autocomplete="name" required class="settings-input h-12 bg-white" />
+              <input type="text" name="name" x-model="name" placeholder="Seu nome" autocomplete="name" required class="settings-input h-12 bg-white" />
             </label>
 
             <label class="block">
               <span class="mb-2 block text-sm font-semibold text-slate-700">E-mail corporativo</span>
-              <input type="email" name="email" placeholder="voce@empresa.com" autocomplete="email" required class="settings-input h-12 bg-white" />
+              <input type="email" name="email" x-model="email" placeholder="voce@empresa.com" autocomplete="email" required class="settings-input h-12 bg-white" />
             </label>
 
             <label class="block">
               <span class="mb-2 block text-sm font-semibold text-slate-700">Senha</span>
               <span class="relative block">
-                <input :type="passwordVisible ? 'text' : 'password'" name="password" placeholder="Crie uma senha segura" autocomplete="new-password" minlength="8" required class="settings-input h-12 bg-white pr-12" />
+                <input :type="passwordVisible ? 'text' : 'password'" name="password" x-model="password" placeholder="Crie uma senha segura" autocomplete="new-password" minlength="8" required class="settings-input h-12 bg-white pr-12" />
                 <button type="button" @click="passwordVisible = !passwordVisible" :aria-label="passwordVisible ? 'Ocultar senha' : 'Mostrar senha'" class="absolute right-3 top-1/2 flex -translate-y-1/2 items-center justify-center rounded-lg p-1.5 text-slate-400 transition-colors hover:text-slate-700 focus:outline-none focus:ring-2 focus:ring-cyan-400/50">
                   <Eye x-show="!passwordVisible" x-cloak class="text-lg" aria-hidden="true" />
                   <EyeOff x-show="passwordVisible" x-cloak class="text-lg" aria-hidden="true" />
@@ -80,7 +118,7 @@ import '../styles/global.css';
             <label class="block">
               <span class="mb-2 block text-sm font-semibold text-slate-700">Confirmar senha</span>
               <span class="relative block">
-                <input :type="confirmPasswordVisible ? 'text' : 'password'" name="password_confirmation" placeholder="Repita sua senha" autocomplete="new-password" minlength="8" required class="settings-input h-12 bg-white pr-12" />
+                <input :type="confirmPasswordVisible ? 'text' : 'password'" name="password_confirmation" x-model="passwordConfirmation" placeholder="Repita sua senha" autocomplete="new-password" minlength="8" required class="settings-input h-12 bg-white pr-12" />
                 <button type="button" @click="confirmPasswordVisible = !confirmPasswordVisible" :aria-label="confirmPasswordVisible ? 'Ocultar confirmação de senha' : 'Mostrar confirmação de senha'" class="absolute right-3 top-1/2 flex -translate-y-1/2 items-center justify-center rounded-lg p-1.5 text-slate-400 transition-colors hover:text-slate-700 focus:outline-none focus:ring-2 focus:ring-cyan-400/50">
                   <Eye x-show="!confirmPasswordVisible" x-cloak class="text-lg" aria-hidden="true" />
                   <EyeOff x-show="confirmPasswordVisible" x-cloak class="text-lg" aria-hidden="true" />
@@ -93,9 +131,14 @@ import '../styles/global.css';
               <span>Concordo com os <a href="/" class="font-semibold text-blue-600 transition-colors hover:text-blue-700">termos de uso</a> e a política de privacidade.</span>
             </label>
 
-            <button type="submit" class="flex h-12 w-full items-center justify-center gap-2 rounded-xl bg-slate-900 px-5 text-sm font-semibold text-white shadow-sm transition-colors hover:bg-slate-800 focus:outline-none focus:ring-2 focus:ring-cyan-400/50">
-              Criar minha conta
-              <ArrowRight class="text-lg" aria-hidden="true" />
+            <p x-show="error" x-cloak class="flex items-start gap-2 rounded-xl border border-red-100 bg-red-50 p-4 text-sm leading-5 text-red-700" role="alert">
+              <AlertCircle class="mt-0.5 shrink-0 text-base" aria-hidden="true" />
+              <span x-text="error"></span>
+            </p>
+
+            <button type="submit" :disabled="submitting" class="flex h-12 w-full items-center justify-center gap-2 rounded-xl bg-slate-900 px-5 text-sm font-semibold text-white shadow-sm transition-colors hover:bg-slate-800 focus:outline-none focus:ring-2 focus:ring-cyan-400/50 disabled:cursor-not-allowed disabled:opacity-60">
+              <span x-text="submitting ? 'Criando conta...' : 'Criar minha conta'"></span>
+              <ArrowRight x-show="!submitting" class="text-lg" aria-hidden="true" />
             </button>
           </form>
 

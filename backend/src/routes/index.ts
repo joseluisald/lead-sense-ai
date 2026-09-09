@@ -7,7 +7,7 @@ import { statRoutes } from './stat.routes';
 import { logRoutes } from './log.routes';
 import { authRoutes } from './auth.routes';
 
-export const apiRoutes = new Elysia({ prefix: '/api' })
+export const apiRoutes = new Elysia({ prefix: '/api/v1' })
     .use(clientRoutes)
     .use(leadRoutes)
     .use(settingRoutes)

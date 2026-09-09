@@ -1,8 +1,10 @@
-// src/routes/stat.routes.ts
 import { Elysia, t } from 'elysia';
 import { StatController } from '../controllers/stat.controller';
+import { authenticate, jwtPlugin } from '../plugins/auth';
 
 export const statRoutes = new Elysia({ prefix: '/stats' })
+    .use(jwtPlugin)
+    .onBeforeHandle(authenticate)
     .get(
         '/',
         ({ query, set }) => StatController.getStats(query.clientId, set),

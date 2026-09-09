@@ -1,5 +1,5 @@
 import { createHash, randomBytes } from "node:crypto";
-import { UserModel } from "../models/user.model";
+import { UserModel } from '../models/user.model';
 import { buildEmailHtml, sendEmailViaSmtp } from "../core/utils";
 
 const passwordResetMessage =

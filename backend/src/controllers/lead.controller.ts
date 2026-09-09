@@ -10,8 +10,47 @@ import {
     sendEmailViaSmtp
 } from '../core/utils';
 
+const disposableEmailDomains = new Set([
+    '10minutemail.com',
+    'guerrillamail.com',
+    'mailinator.com',
+    'sharklasers.com',
+    'tempmail.com',
+    'trashmail.com',
+    'yopmail.com'
+]);
+
+function evaluateStatus(score: number, email: string, whatsapp: string, rules: Record<string, any>) {
+    const domain = email.split('@').pop()?.trim().toLowerCase() || '';
+    const blockedDomains = Array.isArray(rules.blockedDomains)
+        ? rules.blockedDomains.map((item: unknown) => String(item).trim().toLowerCase())
+        : [];
+    const reasons: string[] = [];
+
+    if (blockedDomains.includes(domain)) reasons.push('domínio bloqueado');
+    if (rules.blockDisposableEmails && disposableEmailDomains.has(domain)) reasons.push('e-mail descartável');
+    if (rules.requirePhone && !whatsapp.trim()) reasons.push('telefone obrigatório ausente');
+
+    if (reasons.length > 0) {
+        return { status: 'rejected', reason: `Lead rejeitado: ${reasons.join(', ')}.` };
+    }
+
+    const minimumScore = Math.max(
+        Number(rules.autoRejectThreshold ?? 30),
+        Number(rules.minimumScore ?? 0)
+    );
+    const autoVerifyThreshold = Number(rules.autoVerifyThreshold ?? 90);
+    const status = score < minimumScore
+        ? 'rejected'
+        : score >= autoVerifyThreshold
+            ? 'verified'
+            : 'pending_verification';
+
+    return { status, reason: '' };
+}
+
 export class LeadController {
-    static async create(body: { name: string; email: string; whatsapp: string }, apiKey: string | undefined, set: { status?: number | string }) {
+    static async create(body: { name: string; email: string; whatsapp?: string }, apiKey: string | undefined, set: { status?: number | string }) {
         if (!apiKey) {
             const response = { error: 'API Key missing in x-api-key header' };
             logApiRequest('/api/leads', 'POST', body, 401, response);
@@ -29,23 +68,24 @@ export class LeadController {
             }
 
             const rules = await SettingModel.getValidationRules();
-            const aiResult = await scoreLeadData(body.name, body.email, body.whatsapp, rules.customScoringRules);
-            const status = aiResult.score < rules.autoRejectThreshold
-                ? 'rejected'
-                : aiResult.score >= rules.autoVerifyThreshold
-                    ? 'verified'
-                    : 'pending_verification';
+            const whatsapp = body.whatsapp || '';
+            const aiResult = rules.autoValidate === false
+                ? { score: 0, probability: 'LOW', reason: 'Validação automática desativada.' }
+                : await scoreLeadData(body.name, body.email, whatsapp, rules.customScoringRules);
+            const evaluation = evaluateStatus(aiResult.score, body.email, whatsapp, rules);
             const id = await LeadModel.create({
                 clientId: client.id,
                 ...body,
+                whatsapp,
                 score: aiResult.score,
                 probability: aiResult.probability,
-                reason: aiResult.reason,
-                status
+                reason: evaluation.reason || aiResult.reason,
+                status: rules.autoValidate === false ? 'pending_verification' : evaluation.status
             });
+            const status = rules.autoValidate === false ? 'pending_verification' : evaluation.status;
 
             broadcastEvent('new_lead', { id, clientId: client.id, name: body.name, email: body.email, score: aiResult.score, status });
-            const appUrl = process.env.APP_URL || `http://localhost:${process.env.PORT || 3000}`;
+            const appUrl = (process.env.APP_URL || `http://localhost:${process.env.PORT || 3000}`).replace(/\/$/, '');
             const verificationLink = `${appUrl}/api/verify/${id}`;
 
             if (status === 'verified') {
@@ -56,7 +96,13 @@ export class LeadController {
             } else if (status === 'pending_verification') {
                 const templateValue = await SettingModel.get('email_template');
                 let emailSubject = 'Verifique seu interesse!';
-                let emailBody = `Olá ${body.name}, confirme seu email clicando aqui: ${verificationLink}`;
+                let emailBody = buildEmailHtml(
+                    emailSubject,
+                    `Olá ${body.name}, confirme seu email clicando aqui.`,
+                    'Verificar E-mail',
+                    '#16a34a',
+                    verificationLink
+                );
 
                 if (templateValue) {
                     try {
@@ -126,7 +172,10 @@ export class LeadController {
             let brandColor = '#16a34a';
             if (templateValue) {
                 try {
-                    brandColor = JSON.parse(templateValue).color || brandColor;
+                    const configuredColor = JSON.parse(templateValue).color;
+                    if (typeof configuredColor === 'string' && /^#[0-9a-f]{6}$/i.test(configuredColor)) {
+                        brandColor = configuredColor;
+                    }
                 } catch {}
             }
             set.headers['Content-Type'] = 'text/html; charset=utf8';
@@ -174,15 +223,16 @@ export class LeadController {
         try {
             const [leads, rules] = await Promise.all([LeadModel.findByIds(ids), SettingModel.getValidationRules()]);
             for (const lead of leads) {
-                const evaluation = await scoreLeadData(lead.name, lead.email, lead.whatsapp, rules.customScoringRules);
-                const status = evaluation.score < rules.autoRejectThreshold
-                    ? 'rejected'
-                    : evaluation.score >= rules.autoVerifyThreshold
-                        ? 'verified'
-                        : lead.status === 'rejected'
-                            ? 'pending_verification'
-                            : lead.status;
-                await LeadModel.updateEvaluation(lead.id, { ...evaluation, status });
+                const evaluation = rules.autoValidate === false
+                    ? { score: 0, probability: 'LOW', reason: 'Validação automática desativada.' }
+                    : await scoreLeadData(lead.name, lead.email, lead.whatsapp, rules.customScoringRules);
+                const ruleEvaluation = evaluateStatus(evaluation.score, lead.email, lead.whatsapp, rules);
+                const status = rules.autoValidate === false ? 'pending_verification' : ruleEvaluation.status;
+                await LeadModel.updateEvaluation(lead.id, {
+                    ...evaluation,
+                    reason: ruleEvaluation.reason || evaluation.reason,
+                    status
+                });
                 if (status === 'verified' && lead.status !== 'verified') {
                     const client = await ClientModel.findById(lead.clientId);
                     if (client) fireWebhook(lead, client, evaluation.score, evaluation.probability, 'verified');

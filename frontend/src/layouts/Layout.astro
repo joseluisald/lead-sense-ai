@@ -1,18 +1,23 @@
 ---
 import Sidebar from '../components/Sidebar.astro';
-
 import '../styles/global.css';
+
+const currentPath = Astro.url.pathname;
+const publicRoutes = ['/login', '/signup', '/forgot-password', '/reset-password', '/404'];
+const isAuthPage = publicRoutes.some(route => currentPath.startsWith(route));
 ---
 <html lang="pt-BR">
-  <head>
-    <meta charset="utf-8" />
-    <meta name="viewport" content="width=device-width" />
-    <title>LeadSense Admin</title>
-  </head>
-  <body class="flex h-screen bg-slate-50 overflow-hidden text-slate-800 font-sans">
-    <Sidebar />
-    <main class="flex-1 overflow-y-auto relative">
-      <slot />
-    </main>
-  </body>
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width" />
+  <title>LeadSense Admin</title>
+</head>
+<body class="flex h-screen bg-slate-50 overflow-hidden text-slate-800 font-sans" x-data={!isAuthPage ? "leadSense" : undefined}>
+
+{!isAuthPage && <Sidebar />}
+
+<main class="flex-1 overflow-y-auto relative" class:list={[{ 'min-h-screen bg-slate-950 font-sans text-slate-800': isAuthPage }]}>
+  <slot />
+</main>
+</body>
 </html>

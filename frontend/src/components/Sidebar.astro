@@ -1,20 +1,17 @@
 ---
 import { Image } from 'astro:assets';
-import { Briefcase, ChartLine, ChevronDown, EllipsisVertical, Leaf, LogOut, PanelLeftClose, PanelLeftOpen, Settings, Terminal, UsersRound } from 'lucide-astro';
-import { api } from '../lib/eden';
-
-let apiStatus = 'Offline';
-let totalLeads = 0;
-
-try {
-  const { data } = await api.api.stats.get();
-  if (data) {
-    totalLeads = Number(data.totalLeads || 0);
-    apiStatus = 'Online';
-  }
-} catch (error) {
-  console.error('Falha ao conectar com o Backend Elysia:', error);
-}
+import {
+  Briefcase,
+  ChartLine,
+  ChevronDown,
+  EllipsisVertical,
+  LogOut,
+  PanelLeftClose,
+  PanelLeftOpen,
+  Settings,
+  Terminal,
+  UsersRound
+} from 'lucide-astro';
 
 const currentPath = Astro.url.pathname;
 const dashboardActive = currentPath === '/' || currentPath === '/dashboard';
@@ -25,20 +22,20 @@ import logoIcon from '@/assets/logos/logo-icon.webp';
 ---
 
 <aside
-  x-data={`{ sidebarOpen: true, settingsOpen: ${settingsActive}, userMenuOpen: false }`}
-  x-init="sidebarOpen = false"
-  class="relative z-40 flex h-full w-72 shrink-0 flex-col border-r border-slate-800 bg-slate-900 text-slate-300 shadow-2xl transition-all duration-300 ease-in-out"
-  :class="{ '!w-20': !sidebarOpen }"
+    x-data={`sidebar(${settingsActive})`}
+    x-init="sidebarOpen = true"
+    class="relative z-40 flex h-full w-72 shrink-0 flex-col border-r border-slate-800 bg-slate-900 text-slate-300 shadow-2xl transition-all duration-300 ease-in-out"
+    :class="{ 'w-20!': !sidebarOpen }"
 >
-  <header
-    class="flex h-20 shrink-0 items-center justify-center border-b border-slate-800 bg-slate-950 px-4"
-  >
+  <!-- Header / Logos -->
+  <header class="flex h-20 shrink-0 items-center justify-center border-b border-slate-800 bg-slate-950 px-4">
     <a
         href="/dashboard"
         class="relative flex h-14 min-w-0 items-center justify-center transition-all duration-300"
         :class="!sidebarOpen ? 'w-14 absolute inset-0' : 'w-48'"
         aria-label="Ir para o dashboard"
     >
+      <!-- Ícone Minimizado -->
       <div
           x-show="!sidebarOpen"
           x-cloak
@@ -62,6 +59,7 @@ import logoIcon from '@/assets/logos/logo-icon.webp';
         />
       </div>
 
+      <!-- Logo Completa -->
       <div
           x-show="sidebarOpen"
           x-cloak
@@ -87,54 +85,70 @@ import logoIcon from '@/assets/logos/logo-icon.webp';
     </a>
   </header>
 
+  <!-- Navegação Principal -->
   <nav id="main-sidebar-navigation" class="flex-1 overflow-y-auto overflow-x-hidden px-3 py-6" aria-label="Navegação principal">
-    <div x-show="sidebarOpen" x-cloak class="mb-3 px-3 text-[11px] font-bold uppercase tracking-[0.18em] text-slate-500">Workspace</div>
+
+    <!-- Workspace Section -->
+    <div x-show="sidebarOpen" x-cloak class="mb-3 px-3 text-[11px] font-bold uppercase tracking-[0.18em] text-slate-500">
+      Workspace
+    </div>
 
     <div class="space-y-1">
       <a
-        href="/dashboard"
-        title="Dashboard"
-        class="group relative flex items-center gap-4 rounded-xl px-3 py-3 transition-all duration-200 hover:bg-slate-800 hover:text-white"
-        class:list={[{ 'bg-cyan-500/10 text-cyan-400 shadow-[inset_3px_0_0_0_#1499b3]': dashboardActive }]}
+          href="/dashboard"
+          title="Dashboard"
+          class="group relative flex items-center gap-4 rounded-xl px-3 py-3 transition-all duration-200 hover:bg-slate-800 hover:text-white"
+          class:list={[{ 'bg-cyan-500/10 text-cyan-400 shadow-[inset_3px_0_0_0_#1499b3]': dashboardActive }]}
       >
         <ChartLine class="shrink-0 text-2xl transition-transform duration-200 group-hover:scale-110" aria-hidden="true" />
         <span x-show="sidebarOpen" x-cloak class="whitespace-nowrap font-medium">Dashboard</span>
       </a>
 
       <a
-        href="/leads"
-        title="Gestão de Leads"
-        class="group relative flex items-center gap-4 rounded-xl px-3 py-3 transition-all duration-200 hover:bg-slate-800 hover:text-white"
-        class:list={[{ 'bg-cyan-500/10 text-cyan-400 shadow-[inset_3px_0_0_0_#1499b3]': currentPath.includes('/leads') }]}
+          href="/leads"
+          title="Gestão de Leads"
+          class="group relative flex items-center gap-4 rounded-xl px-3 py-3 transition-all duration-200 hover:bg-slate-800 hover:text-white"
+          class:list={[{ 'bg-cyan-500/10 text-cyan-400 shadow-[inset_3px_0_0_0_#1499b3]': currentPath.includes('/leads') }]}
       >
         <UsersRound class="shrink-0 text-2xl transition-transform duration-200 group-hover:scale-110" aria-hidden="true" />
         <span x-show="sidebarOpen" x-cloak class="whitespace-nowrap font-medium">Gestão de Leads</span>
-        {totalLeads > 0 && (
-          <span x-show="sidebarOpen" x-cloak class="absolute right-3 rounded-full bg-cyan-500 px-2 py-0.5 text-xs font-bold text-slate-950">{totalLeads}</span>
-        )}
+
+        <!-- Badge reativo ao totalLeads vindo do Alpine -->
+        <template x-if="totalLeads > 0">
+          <span
+              x-show="sidebarOpen"
+              x-cloak
+              x-text="totalLeads"
+              class="absolute right-3 rounded-full bg-cyan-500 px-2 py-0.5 text-xs font-bold text-slate-950"
+          ></span>
+        </template>
       </a>
 
       <a
-        href="/clients"
-        title="Meus Clientes"
-        class="group relative flex items-center gap-4 rounded-xl px-3 py-3 transition-all duration-200 hover:bg-slate-800 hover:text-white"
-        class:list={[{ 'bg-cyan-500/10 text-cyan-400 shadow-[inset_3px_0_0_0_#1499b3]': currentPath.includes('/clients') }]}
+          href="/clients"
+          title="Meus Clientes"
+          class="group relative flex items-center gap-4 rounded-xl px-3 py-3 transition-all duration-200 hover:bg-slate-800 hover:text-white"
+          class:list={[{ 'bg-cyan-500/10 text-cyan-400 shadow-[inset_3px_0_0_0_#1499b3]': currentPath.includes('/clients') }]}
       >
         <Briefcase class="shrink-0 text-2xl transition-transform duration-200 group-hover:scale-110" aria-hidden="true" />
         <span x-show="sidebarOpen" x-cloak class="whitespace-nowrap font-medium">Meus Clientes</span>
       </a>
     </div>
 
-    <div x-show="sidebarOpen" x-cloak class="mb-3 mt-8 px-3 text-[11px] font-bold uppercase tracking-[0.18em] text-slate-500">Sistema</div>
+    <!-- Sistema Section -->
+    <div x-show="sidebarOpen" x-cloak class="mb-3 mt-8 px-3 text-[11px] font-bold uppercase tracking-[0.18em] text-slate-500">
+      Sistema
+    </div>
 
     <div class="space-y-1">
       <div>
         <button
-          type="button"
-          @click="settingsOpen = !settingsOpen; if (!sidebarOpen) sidebarOpen = true"
-          class="group flex w-full items-center justify-between gap-4 rounded-xl px-3 py-3 text-left transition-all duration-200 hover:bg-slate-800 hover:text-white"
-          :class="settingsOpen ? 'bg-slate-800/70 text-white' : ''"
-          title="Configurações"
+            type="button"
+            @click="toggleSettings()"
+            class="group flex w-full items-center justify-between gap-4 rounded-xl px-3 py-3 text-left transition-all duration-200 hover:bg-slate-800 hover:text-white"
+            :class={`settingsOpen && !${currentPath.includes('/settings')} ? 'bg-slate-800/70 text-white' : ''`}
+            class:list={[{ 'bg-cyan-500/10 text-cyan-400 shadow-[inset_3px_0_0_0_#1499b3]': currentPath.includes('/settings') }]}
+            title="Configurações"
         >
           <span class="flex items-center gap-4">
             <Settings class="shrink-0 text-2xl transition-transform duration-300 group-hover:rotate-90" aria-hidden="true" />
@@ -143,6 +157,7 @@ import logoIcon from '@/assets/logos/logo-icon.webp';
           <ChevronDown x-show="sidebarOpen" x-cloak class="text-sm transition-transform duration-300" :class="settingsOpen ? 'rotate-180' : ''" aria-hidden="true" />
         </button>
 
+        <!-- Dropdown de Configurações -->
         <div x-show="settingsOpen && sidebarOpen" x-cloak x-collapse class="ml-6 mt-1 space-y-1 border-l border-slate-700 pl-5">
           <a href="/settings/email" class="block rounded-lg px-3 py-2 text-sm text-slate-400 transition-colors hover:bg-slate-800 hover:text-white" class:list={[{ 'bg-slate-800 text-white': currentPath === '/settings/email' }]}>Email SMTP</a>
           <a href="/settings/whatsapp" class="block rounded-lg px-3 py-2 text-sm text-slate-400 transition-colors hover:bg-slate-800 hover:text-white" class:list={[{ 'bg-slate-800 text-white': currentPath === '/settings/whatsapp' }]}>WhatsApp</a>
@@ -151,10 +166,10 @@ import logoIcon from '@/assets/logos/logo-icon.webp';
       </div>
 
       <a
-        href="/logs"
-        title="API Logs"
-        class="group relative flex items-center gap-4 rounded-xl px-3 py-3 transition-all duration-200 hover:bg-slate-800 hover:text-white"
-        class:list={[{ 'bg-cyan-500/10 text-cyan-400 shadow-[inset_3px_0_0_0_#1499b3]': currentPath.includes('/logs') }]}
+          href="/logs"
+          title="API Logs"
+          class="group relative flex items-center gap-4 rounded-xl px-3 py-3 transition-all duration-200 hover:bg-slate-800 hover:text-white"
+          class:list={[{ 'bg-cyan-500/10 text-cyan-400 shadow-[inset_3px_0_0_0_#1499b3]': currentPath.includes('/logs') }]}
       >
         <Terminal class="shrink-0 text-2xl transition-transform duration-200 group-hover:scale-110" aria-hidden="true" />
         <span x-show="sidebarOpen" x-cloak class="whitespace-nowrap font-medium">API Logs</span>
@@ -162,16 +177,17 @@ import logoIcon from '@/assets/logos/logo-icon.webp';
     </div>
   </nav>
 
+  <!-- Toggle / Recolher Sidebar -->
   <div class="shrink-0 border-t border-slate-800 px-3 py-2">
     <button
-      type="button"
-      @click="sidebarOpen = !sidebarOpen; userMenuOpen = false"
-      class="flex w-full items-center gap-3 rounded-xl px-3 py-2.5 text-left text-slate-500 transition-all duration-200 hover:bg-slate-800 hover:text-white"
-      :class="!sidebarOpen ? 'justify-center px-0' : ''"
-      :aria-label="sidebarOpen ? 'Recolher menu' : 'Expandir menu'"
-      :aria-expanded="sidebarOpen"
-      aria-controls="main-sidebar-navigation"
-      :title="sidebarOpen ? 'Recolher menu' : 'Expandir menu'"
+        type="button"
+        @click="toggleSidebar()"
+        class="flex w-full items-center gap-3 rounded-xl px-3 py-2.5 text-left text-slate-500 transition-all duration-200 hover:bg-slate-800 hover:text-white"
+        :class="!sidebarOpen ? 'justify-center px-0' : ''"
+        :aria-label="sidebarOpen ? 'Recolher menu' : 'Expandir menu'"
+        :aria-expanded="sidebarOpen"
+        aria-controls="main-sidebar-navigation"
+        :title="sidebarOpen ? 'Recolher menu' : 'Expandir menu'"
     >
       <PanelLeftClose x-show="sidebarOpen" x-cloak class="shrink-0 text-lg transition-transform duration-300" aria-hidden="true" />
       <PanelLeftOpen x-show="!sidebarOpen" x-cloak class="shrink-0 text-lg transition-transform duration-300" aria-hidden="true" />
@@ -179,41 +195,62 @@ import logoIcon from '@/assets/logos/logo-icon.webp';
     </button>
   </div>
 
+  <!-- Footer / Perfil Usuário -->
   <footer class="relative shrink-0 p-3">
+    <!-- Menu Dropdown do Usuário -->
     <div
         x-show="userMenuOpen"
         x-cloak
         x-transition
-        @click.outside="userMenuOpen = false"
+        @click.outside="closeUserMenu()"
         class="absolute bottom-full z-30 mb-2 w-52 overflow-hidden rounded-xl border border-slate-700 bg-slate-950 p-1.5 shadow-2xl"
         :class="!sidebarOpen ? 'left-3' : 'right-3'"
     >
-      <a href="/settings/email" @click="userMenuOpen = false" class="flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm text-slate-300 transition-colors hover:bg-slate-800 hover:text-white">
+      <a href="/settings/email" @click="closeUserMenu()" class="flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm text-slate-300 transition-colors hover:bg-slate-800 hover:text-white">
         <Settings class="text-base text-slate-500" aria-hidden="true" />
         Configurações
       </a>
-      <button type="button" @click="localStorage.removeItem('auth_token'); localStorage.removeItem('user'); window.location.href = '/login'" class="flex w-full items-center gap-3 rounded-lg px-3 py-2.5 text-left text-sm text-red-300 transition-colors hover:bg-red-500/10 hover:text-red-200">
+      <button type="button" @click="logout()" class="flex w-full items-center gap-3 rounded-lg px-3 py-2.5 text-left text-sm text-red-300 transition-colors hover:bg-red-500/10 hover:text-red-200">
         <LogOut class="text-base" aria-hidden="true" />
         Sair da conta
       </button>
     </div>
 
+    <!-- Perfil e Status -->
     <div class="flex items-center gap-3 rounded-xl border border-slate-800 bg-slate-950/70 p-2.5 transition-colors hover:border-slate-700 hover:bg-slate-800" :class="!sidebarOpen ? 'flex-col gap-2' : ''">
-      <img src="https://ui-avatars.com/api/?name=Admin+LeadSense&background=147cc0&color=fff" alt="Administrador" class="h-10 w-10 shrink-0 rounded-full border-2 border-slate-700" />
+
+      <!-- Avatar reativo -->
+      <img
+          :src="userAvatar"
+          :alt="user.name"
+          class="h-10 w-10 shrink-0 object-cover rounded-full border-2 border-slate-700"
+          alt="User Avatar" />
+
       <div x-show="sidebarOpen" x-cloak class="min-w-0 flex-1 overflow-hidden">
-        <p class="truncate text-sm font-semibold text-white">Administrador</p>
-        <p class="mt-0.5 flex items-center gap-1.5 truncate text-xs" class:list={[apiStatus === 'Online' ? 'text-cyan-400' : 'text-red-400']}>
-          <span class:list={["h-1.5 w-1.5 shrink-0 rounded-full", apiStatus === 'Online' ? 'bg-cyan-500' : 'bg-red-500']}></span>
-          API {apiStatus}
+
+        <!-- Nome reativo -->
+        <p class="truncate text-sm font-semibold text-white" x-text="user.name || 'Administrador'"></p>
+
+        <!-- Status da API Reativo -->
+        <p
+            class="mt-0.5 flex items-center gap-1.5 truncate text-xs"
+            :class="apiStatus === 'Online' ? 'text-cyan-400' : 'text-red-400'"
+        >
+          <span
+              class="h-1.5 w-1.5 shrink-0 rounded-full"
+              :class="apiStatus === 'Online' ? 'bg-cyan-500' : 'bg-red-500'"
+          ></span>
+          API <span x-text="apiStatus"></span>
         </p>
       </div>
+
       <button
-        type="button"
-        @click="userMenuOpen = !userMenuOpen"
-        class="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg text-slate-600 transition-colors hover:bg-slate-800 hover:text-white"
-        :aria-expanded="userMenuOpen"
-        aria-label="Abrir menu do usuário"
-        title="Menu do usuário"
+          type="button"
+          @click="toggleUserMenu()"
+          class="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg text-slate-600 transition-colors hover:bg-slate-800 hover:text-white"
+          :aria-expanded="userMenuOpen"
+          aria-label="Abrir menu do usuário"
+          title="Menu do usuário"
       >
         <EllipsisVertical class="text-lg" aria-hidden="true" />
       </button>

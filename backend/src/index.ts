@@ -4,7 +4,8 @@ import { OpenAPIPlugin } from "./plugins/openapi";
 import { apiRoutes } from './routes';
 import { initializeDatabase } from "./core/init-db";
 
-const frontendOrigin = process.env.FRONTEND_URL || 'http://localhost:4321';
+const frontendOrigin = (process.env.FRONTEND_URL || 'http://localhost:4321').replace(/\/$/, '');
+const port = Number(process.env.PORT || 3000);
 
 const app = new Elysia()
     .onRequest(({ request, set }) => {
@@ -30,12 +31,12 @@ async function startServer() {
     await initializeDatabase();
 
     const server = app.listen({
-      hostname: "0.0.0.0",
-      port: 3000,
+      hostname: '0.0.0.0',
+      port,
     });
 
     console.log(`🚀 Servidor rodando em http://${server.server?.hostname}:${server.server?.port}`);
-    console.log(`📄 Swagger disponível em http://0.0.0.0:3000/docs`);
+    console.log(`📄 Swagger disponível em http://localhost:${port}/docs`);
 }
 
 startServer().catch((error) => {

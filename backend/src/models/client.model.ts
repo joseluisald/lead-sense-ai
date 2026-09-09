@@ -1,5 +1,5 @@
 import { randomBytes, randomUUID } from "node:crypto";
-import { ResultSetHeader, RowDataPacket } from "mysql2";
+import { ResultSetHeader, RowDataPacket } from 'mysql2';
 import { db } from "../core/database";
 
 export class ClientModel {
@@ -17,7 +17,11 @@ export class ClientModel {
 
   static async list() {
     const [clients] = await db.execute<RowDataPacket[]>(
-      "SELECT id, name, apiKey, createdAt FROM clients ORDER BY createdAt DESC"
+      `SELECT clients.id, clients.name, clients.createdAt, COUNT(leads.id) AS leadsCount
+       FROM clients
+       LEFT JOIN leads ON leads.clientId = clients.id
+       GROUP BY clients.id, clients.name, clients.createdAt
+       ORDER BY clients.createdAt DESC`
     );
 
     return clients;

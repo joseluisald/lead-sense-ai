@@ -1,4 +1,3 @@
-// src/core/init-db.ts
 import { randomBytes, randomUUID } from 'node:crypto';
 import { RowDataPacket } from 'mysql2';
 import { db } from './database';
@@ -101,7 +100,7 @@ export async function initializeDatabase() {
         // Seed: Cliente e Lead de Teste
         const [clientRows] = await db.execute<RowDataPacket[]>("SELECT COUNT(*) as count FROM clients");
 
-        if (clientRows[0].count === 0) {
+        if (process.env.NODE_ENV !== 'production' && process.env.SEED_DEMO_DATA === 'true' && clientRows[0].count === 0) {
             const clientId = randomUUID();
             const apiKey = 'sk_test_' + randomBytes(16).toString('hex');
 
