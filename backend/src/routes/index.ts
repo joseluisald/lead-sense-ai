@@ -1,4 +1,3 @@
-// src/routes/index.ts
 import { Elysia } from 'elysia';
 import { clientRoutes } from './client.routes';
 import { leadRoutes } from './lead.routes';
